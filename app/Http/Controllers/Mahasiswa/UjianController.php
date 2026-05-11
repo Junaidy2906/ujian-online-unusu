@@ -162,9 +162,19 @@ class UjianController extends Controller
 
         $pgScore100 = $totalPgPoin > 0 ? ($nilaiPgRaw / $totalPgPoin) * 100 : 0;
         $essayScore100 = $totalEssayPoin > 0 ? ($nilaiEssayRaw / $totalEssayPoin) * 100 : 0;
-        $nilaiPgFinal = round($pgScore100 * ((float) $ujian->bobot_pg / 100), 2);
-        $nilaiEssayFinal = $essayExists ? null : round($essayScore100 * ((float) $ujian->bobot_essay / 100), 2);
-        $nilaiAkhir = $essayExists ? $nilaiPgFinal : round($nilaiPgFinal + $nilaiEssayFinal, 2);
+
+        // Jika ujian hanya berisi PG, pakai skala penuh 0-100 agar 16/20 = 80, 20/20 = 100.
+        $isPgOnlyExam = $soalItems->where('tipe', 'essay')->count() === 0;
+
+        if ($isPgOnlyExam) {
+            $nilaiPgFinal = round($pgScore100, 2);
+            $nilaiEssayFinal = 0.0;
+            $nilaiAkhir = $nilaiPgFinal;
+        } else {
+            $nilaiPgFinal = round($pgScore100 * ((float) $ujian->bobot_pg / 100), 2);
+            $nilaiEssayFinal = $essayExists ? null : round($essayScore100 * ((float) $ujian->bobot_essay / 100), 2);
+            $nilaiAkhir = $essayExists ? $nilaiPgFinal : round($nilaiPgFinal + $nilaiEssayFinal, 2);
+        }
         $isLulus = $nilaiAkhir >= (float) $ujian->nilai_minimum_lulus && ! $essayExists;
 
         $percobaan->update([

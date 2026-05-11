@@ -5,18 +5,6 @@
                 <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">Kerjakan Ujian</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ $percobaan->ujian?->nama_ujian }}</p>
             </div>
-            <div id="timer"
-                class="min-w-[240px] rounded-3xl border border-blue-900/60 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 px-5 py-4 text-amber-300 shadow-lg"
-                data-seconds="{{ (int) $remainingSeconds }}">
-                <div class="mb-2 flex items-center justify-between">
-                    <p class="text-xs font-semibold tracking-[0.18em] text-blue-200/90">SISA WAKTU</p>
-                    <span id="timer-state" class="rounded-full bg-blue-500/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-200">Aman</span>
-                </div>
-                <p class="text-3xl font-extrabold leading-none tabular-nums">--:--:--</p>
-                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15">
-                    <div id="timer-progress" class="h-full w-full rounded-full bg-gradient-to-r from-emerald-300 via-amber-300 to-rose-400 transition-all duration-700"></div>
-                </div>
-            </div>
         </div>
     </x-slot>
 
@@ -135,6 +123,19 @@
                                     <p><span class="inline-block h-3 w-3 rounded border border-gray-300 bg-white"></span> Belum Dijawab</p>
                                 </div>
                             </div>
+
+                            <div id="timer"
+                                class="mt-4 rounded-3xl border border-blue-900/60 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 px-5 py-4 text-amber-300 shadow-lg"
+                                data-seconds="{{ (int) $remainingSeconds }}">
+                                <div class="mb-2 flex items-center justify-between">
+                                    <p class="text-xs font-semibold tracking-[0.18em] text-blue-200/90">SISA WAKTU</p>
+                                    <span id="timer-state" class="rounded-full bg-blue-500/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-200">Aman</span>
+                                </div>
+                                <p id="timer-text" class="text-3xl font-extrabold leading-none tabular-nums">--:--:--</p>
+                                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15">
+                                    <div id="timer-progress" class="h-full w-full rounded-full bg-gradient-to-r from-emerald-300 via-amber-300 to-rose-400 transition-all duration-700"></div>
+                                </div>
+                            </div>
                         </div>
                     </aside>
                 </div>
@@ -204,10 +205,11 @@
 
         (function () {
             const timerElement = document.getElementById('timer');
-            const timerText = timerElement.querySelector('p:last-child');
+            const timerText = document.getElementById('timer-text');
             const timerState = document.getElementById('timer-state');
             const timerProgress = document.getElementById('timer-progress');
             const form = document.getElementById('exam-form');
+            if (!timerElement || !timerText || !timerState || !timerProgress || !form) return;
             const initial = Math.max(0, parseInt(timerElement.dataset.seconds || '0', 10));
             let remaining = initial;
 
