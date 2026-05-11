@@ -12,7 +12,7 @@
     <form method="POST" action="{{ route('admin.dosen.template.upload') }}" enctype="multipart/form-data" class="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         @csrf
         <div class="flex flex-wrap items-center gap-3">
-            <input type="file" name="template_file" accept=".csv,.txt" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+            <input type="file" name="template_file" accept=".xlsx,.xls,.csv,.txt" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
             <button type="submit" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Upload Data Dosen</button>
         </div>
         @error('template_file')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror

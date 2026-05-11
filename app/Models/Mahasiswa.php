@@ -40,4 +40,9 @@ class Mahasiswa extends Model
     {
         return $this->hasMany(NilaiUjian::class, 'mahasiswa_id');
     }
+
+    public function aksesUjian(): HasMany
+    {
+        return $this->hasMany(UjianMahasiswa::class, 'mahasiswa_id');
+    }
 }

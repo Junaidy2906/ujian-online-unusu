@@ -36,6 +36,8 @@
         @endforeach
     </div>
 
+    {{ $slot }}
+
     <div class="flex items-center justify-between gap-3 pt-2">
         <a href="{{ $backUrl }}" class="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700">Kembali</a>
         <button type="submit" class="rounded-2xl bg-slate-950 px-5 py-2 text-sm font-semibold text-amber-300 shadow-sm hover:bg-slate-800">Simpan</button>

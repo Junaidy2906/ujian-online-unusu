@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\LaporanNilaiController as AdminLaporanNilaiContro
 use App\Http\Controllers\Admin\SemesterController;
 use App\Http\Controllers\Admin\TahunAkademikController;
 use App\Http\Controllers\Dosen\SoalController;
+use App\Http\Controllers\Dosen\MahasiswaController as DosenMahasiswaController;
 use App\Http\Controllers\Dosen\LaporanNilaiController as DosenLaporanNilaiController;
 use App\Http\Controllers\Dosen\UjianController as DosenUjianController;
 use App\Http\Controllers\Mahasiswa\UjianController as MahasiswaUjianController;
@@ -39,7 +40,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('mahasiswa', MahasiswaController::class);
     Route::resource('tahun-akademik', TahunAkademikController::class)->except(['show']);
     Route::resource('semester', SemesterController::class)->except(['show']);
-    Route::resource('kelas', KelasController::class)->except(['show']);
+    Route::resource('kelas', KelasController::class)->parameters(['kelas' => 'kelas'])->except(['show']);
     Route::resource('mata-kuliah', MataKuliahController::class)->except(['show']);
     Route::get('branding', [BrandingController::class, 'edit'])->name('branding.edit');
     Route::post('branding', [BrandingController::class, 'update'])->name('branding.update');
@@ -49,9 +50,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 });
 
 Route::middleware(['auth', 'role:dosen'])->prefix('dosen')->name('dosen.')->group(function () {
+    Route::get('mahasiswa', [DosenMahasiswaController::class, 'index'])->name('mahasiswa.index');
     Route::resource('ujian', DosenUjianController::class)->except(['show']);
     Route::get('ujian/{ujian}/hasil', [DosenUjianController::class, 'hasil'])->name('ujian.hasil');
-    Route::resource('ujian.soal', SoalController::class)->except(['show', 'edit', 'update']);
+    Route::get('ujian/{ujian}/akses-mahasiswa', [DosenUjianController::class, 'aksesMahasiswa'])->name('ujian.akses-mahasiswa');
+    Route::post('ujian/{ujian}/akses-mahasiswa', [DosenUjianController::class, 'simpanAksesMahasiswa'])->name('ujian.akses-mahasiswa.simpan');
+    Route::resource('ujian.soal', SoalController::class)->except(['show']);
+    Route::get('ujian/{ujian}/soal-import', [SoalController::class, 'importForm'])->name('ujian.soal.import.form');
+    Route::post('ujian/{ujian}/soal-import', [SoalController::class, 'importStore'])->name('ujian.soal.import.store');
     Route::get('laporan-nilai', [DosenLaporanNilaiController::class, 'index'])->name('laporan-nilai.index');
     Route::get('laporan-nilai/{ujian}', [DosenLaporanNilaiController::class, 'show'])->name('laporan-nilai.show');
     Route::get('laporan-nilai/{ujian}/mahasiswa/{mahasiswa}', [DosenLaporanNilaiController::class, 'cetakMahasiswa'])->name('laporan-nilai.mahasiswa');

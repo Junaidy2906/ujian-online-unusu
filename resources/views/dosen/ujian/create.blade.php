@@ -6,7 +6,7 @@
         :fields="[
             ['label' => 'Tahun Akademik', 'name' => 'tahun_akademik_id', 'type' => 'select', 'options' => $tahunAkademikItems->pluck('nama', 'id')->all()],
             ['label' => 'Semester', 'name' => 'semester_id', 'type' => 'select', 'options' => \App\Models\Semester::latest()->get()->pluck('nama', 'id')->all()],
-            ['label' => 'Kelas', 'name' => 'kelas_id', 'type' => 'select', 'options' => $kelasItems->pluck('nama_kelas', 'id')->all()],
+            ['label' => 'Kelas', 'name' => 'kelas_id', 'type' => 'select', 'options' => $kelasItems->mapWithKeys(fn ($k) => [$k->id => $k->nama_kelas.' ('.$k->mahasiswa_count.' mhs)'])->all()],
             ['label' => 'Mata Kuliah', 'name' => 'mata_kuliah_id', 'type' => 'select', 'options' => $mataKuliahItems->pluck('nama_mk', 'id')->all()],
             ['label' => 'Nama Ujian', 'name' => 'nama_ujian'],
             ['label' => 'Deskripsi', 'name' => 'deskripsi', 'type' => 'textarea', 'full' => true],

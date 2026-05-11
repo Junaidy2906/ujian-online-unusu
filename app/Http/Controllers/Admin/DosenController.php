@@ -10,7 +10,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DosenController extends Controller
 {
@@ -129,41 +132,39 @@ class DosenController extends Controller
         return redirect()->route('admin.dosen.index')->with('success', 'Data dosen berhasil dihapus.');
     }
 
-    public function downloadTemplate(): StreamedResponse
+    public function downloadTemplate(): BinaryFileResponse
     {
         $headers = ['name', 'email', 'password', 'nidn', 'gelar_depan', 'gelar_belakang', 'telepon', 'alamat', 'is_active'];
         $sample = ['Nama Dosen', 'dosen@contoh.ac.id', 'password123', '1234567890', 'Dr.', 'M.Kom', '08123456789', 'Alamat dosen', '1'];
 
-        $callback = function () use ($headers, $sample): void {
-            $output = fopen('php://output', 'w');
-            fputcsv($output, $headers);
-            fputcsv($output, $sample);
-            fclose($output);
-        };
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->fromArray($sample, null, 'A2');
 
-        return response()->streamDownload($callback, 'template_dosen.csv', [
-            'Content-Type' => 'text/csv',
-        ]);
+        $tempFile = tempnam(sys_get_temp_dir(), 'template_dosen_').'.xlsx';
+        (new Xlsx($spreadsheet))->save($tempFile);
+
+        return response()->download($tempFile, 'template_dosen.xlsx')->deleteFileAfterSend(true);
     }
 
     public function uploadTemplate(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'template_file' => ['required', 'file', 'mimes:csv,txt'],
+            'template_file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls'],
         ]);
 
-        $file = fopen($data['template_file']->getRealPath(), 'r');
-        $header = fgetcsv($file);
-
-        if (! $header) {
+        $rows = $this->readSpreadsheetRows($data['template_file']->getRealPath());
+        if (count($rows) === 0) {
             return back()->withErrors(['template_file' => 'File template kosong.']);
         }
 
+        $header = array_shift($rows);
         $header = array_map(fn ($value) => strtolower(trim((string) $value)), $header);
         $created = 0;
 
-        DB::transaction(function () use ($file, $header, &$created): void {
-            while (($row = fgetcsv($file)) !== false) {
+        DB::transaction(function () use ($rows, $header, &$created): void {
+            foreach ($rows as $row) {
                 if (count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) {
                     continue;
                 }
@@ -200,9 +201,16 @@ class DosenController extends Controller
 
                 $created++;
             }
-            fclose($file);
         });
 
         return back()->with('success', "Upload data dosen selesai. Baris diproses: {$created}.");
+    }
+
+    private function readSpreadsheetRows(string $path): array
+    {
+        $spreadsheet = IOFactory::load($path);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        return $sheet->toArray(null, true, true, false);
     }
 }

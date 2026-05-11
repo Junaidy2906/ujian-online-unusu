@@ -47,7 +47,7 @@
         .head p { margin: 10px 0 0; color: #475569; font-size: clamp(15px, 2vw, 23px); }
         .row { margin-top: 24px; }
         label { display: block; margin-bottom: 8px; font-size: clamp(14px, 1.7vw, 19px); font-weight: 600; color: #334155; }
-        input[type="email"], input[type="password"] { width: 100%; border: 1px solid #d4dde8; border-radius: 12px; padding: clamp(12px, 1.8vw, 16px); font-size: clamp(15px, 1.9vw, 20px); outline: none; }
+        input[type="text"], input[type="email"], input[type="password"] { width: 100%; border: 1px solid #d4dde8; border-radius: 12px; padding: clamp(12px, 1.8vw, 16px); font-size: clamp(15px, 1.9vw, 20px); outline: none; }
         input:focus { border-color: #0f7a41; box-shadow: 0 0 0 4px rgba(15,122,65,0.16); }
         .meta { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: clamp(13px, 1.5vw, 18px); }
         .meta a { color: #0f7a41; text-decoration: none; font-weight: 600; }
@@ -99,9 +99,9 @@
                 <form method="POST" action="{{ route('login') }}" class="row">
                     @csrf
                     <div>
-                        <label for="email">Email / Username</label>
-                        <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username" placeholder="Masukkan email">
-                        @error('email')<div class="error">{{ $message }}</div>@enderror
+                        <label for="login">Email / NIM</label>
+                        <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus autocomplete="username" placeholder="Masukkan email atau NIM">
+                        @error('login')<div class="error">{{ $message }}</div>@enderror
                     </div>
 
                     <div style="margin-top:14px;">

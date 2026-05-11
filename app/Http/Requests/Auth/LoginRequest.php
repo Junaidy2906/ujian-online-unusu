@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\Mahasiswa;
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,7 +30,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
@@ -42,11 +44,17 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $login = trim((string) $this->input('login'));
+        $password = (string) $this->input('password');
+        $remember = $this->boolean('remember');
+
+        $credentials = $this->resolveCredentials($login, $password);
+
+        if (! Auth::attempt($credentials, $remember)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'login' => trans('auth.failed'),
             ]);
         }
 
@@ -69,7 +77,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            'login' => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -81,6 +89,23 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('login')).'|'.$this->ip());
+    }
+
+    private function resolveCredentials(string $login, string $password): array
+    {
+        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            return ['email' => $login, 'password' => $password];
+        }
+
+        $mahasiswa = Mahasiswa::query()->where('nim', $login)->first();
+        if ($mahasiswa) {
+            $email = User::query()->where('id', $mahasiswa->user_id)->value('email');
+            if ($email) {
+                return ['email' => $email, 'password' => $password];
+            }
+        }
+
+        return ['email' => $login, 'password' => $password];
     }
 }

@@ -22,6 +22,7 @@
             <div class="md:col-span-2">
                 <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">Pertanyaan</label>
                 <textarea name="pertanyaan" rows="4" class="w-full rounded-2xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">{{ old('pertanyaan') }}</textarea>
+                <p class="mt-1 text-xs text-gray-500">Bisa isi HTML (contoh: &lt;img&gt;, &lt;table&gt;).</p>
             </div>
             <div>
                 <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">Poin</label>

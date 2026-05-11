@@ -27,8 +27,8 @@
                         <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ $item->dosenWali?->user?->name ?? '-' }}</td>
                         <td class="px-6 py-4 text-right text-sm">
                             <div class="inline-flex gap-2">
-                                <a href="{{ route('admin.kelas.edit', $item) }}" class="rounded-xl border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200">Edit</a>
-                                <form method="POST" action="{{ route('admin.kelas.destroy', $item) }}" onsubmit="return confirm('Hapus data ini?')">
+                                <a href="{{ route('admin.kelas.edit', ['kelas' => $item->id]) }}" class="rounded-xl border border-gray-300 px-3 py-1.5 text-gray-700 dark:border-gray-600 dark:text-gray-200">Edit</a>
+                                <form method="POST" action="{{ route('admin.kelas.destroy', ['kelas' => $item->id]) }}" onsubmit="return confirm('Hapus data ini?')">
                                     @csrf
                                     @method('DELETE')
                                     <button class="rounded-xl border border-red-200 px-3 py-1.5 text-red-600">Hapus</button>

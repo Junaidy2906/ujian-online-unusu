@@ -10,7 +10,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class MahasiswaController extends Controller
 {
@@ -43,7 +46,7 @@ class MahasiswaController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
+            'password' => ['nullable', 'string', 'min:8'],
             'nim' => ['required', 'string', 'max:30', 'unique:mahasiswa,nim'],
             'prodi' => ['nullable', 'string', 'max:100'],
             'angkatan' => ['nullable', 'string', 'max:10'],
@@ -53,10 +56,11 @@ class MahasiswaController extends Controller
         ]);
 
         DB::transaction(function () use ($data): void {
+            $defaultPassword = $data['nim'];
             $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
-                'password' => Hash::make($data['password']),
+                'password' => Hash::make($data['password'] ?: $defaultPassword),
                 'role' => User::ROLE_MAHASISWA,
             ]);
 
@@ -129,41 +133,39 @@ class MahasiswaController extends Controller
         return redirect()->route('admin.mahasiswa.index')->with('success', 'Data mahasiswa berhasil dihapus.');
     }
 
-    public function downloadTemplate(): StreamedResponse
+    public function downloadTemplate(): BinaryFileResponse
     {
         $headers = ['name', 'email', 'password', 'nim', 'prodi', 'angkatan', 'telepon', 'alamat', 'status'];
         $sample = ['Nama Mahasiswa', 'mahasiswa@contoh.ac.id', 'password123', '23100001', 'Teknik Informatika', '2023', '08123456789', 'Alamat mahasiswa', 'aktif'];
 
-        $callback = function () use ($headers, $sample): void {
-            $output = fopen('php://output', 'w');
-            fputcsv($output, $headers);
-            fputcsv($output, $sample);
-            fclose($output);
-        };
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->fromArray($sample, null, 'A2');
 
-        return response()->streamDownload($callback, 'template_mahasiswa.csv', [
-            'Content-Type' => 'text/csv',
-        ]);
+        $tempFile = tempnam(sys_get_temp_dir(), 'template_mahasiswa_').'.xlsx';
+        (new Xlsx($spreadsheet))->save($tempFile);
+
+        return response()->download($tempFile, 'template_mahasiswa.xlsx')->deleteFileAfterSend(true);
     }
 
     public function uploadTemplate(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'template_file' => ['required', 'file', 'mimes:csv,txt'],
+            'template_file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls'],
         ]);
 
-        $file = fopen($data['template_file']->getRealPath(), 'r');
-        $header = fgetcsv($file);
-
-        if (! $header) {
+        $rows = $this->readSpreadsheetRows($data['template_file']->getRealPath());
+        if (count($rows) === 0) {
             return back()->withErrors(['template_file' => 'File template kosong.']);
         }
 
+        $header = array_shift($rows);
         $header = array_map(fn ($value) => strtolower(trim((string) $value)), $header);
         $created = 0;
 
-        DB::transaction(function () use ($file, $header, &$created): void {
-            while (($row = fgetcsv($file)) !== false) {
+        DB::transaction(function () use ($rows, $header, &$created): void {
+            foreach ($rows as $row) {
                 if (count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) {
                     continue;
                 }
@@ -173,15 +175,17 @@ class MahasiswaController extends Controller
                     $rowData[$column] = trim((string) ($row[$index] ?? ''));
                 }
 
-                if (($rowData['name'] ?? '') === '' || ($rowData['email'] ?? '') === '' || ($rowData['password'] ?? '') === '' || ($rowData['nim'] ?? '') === '') {
+                if (($rowData['name'] ?? '') === '' || ($rowData['email'] ?? '') === '' || ($rowData['nim'] ?? '') === '') {
                     continue;
                 }
+
+                $password = ($rowData['password'] ?? '') !== '' ? $rowData['password'] : $rowData['nim'];
 
                 $user = User::updateOrCreate(
                     ['email' => $rowData['email']],
                     [
                         'name' => $rowData['name'],
-                        'password' => Hash::make($rowData['password']),
+                        'password' => Hash::make($password),
                         'role' => User::ROLE_MAHASISWA,
                     ]
                 );
@@ -202,9 +206,16 @@ class MahasiswaController extends Controller
 
                 $created++;
             }
-            fclose($file);
         });
 
         return back()->with('success', "Upload data mahasiswa selesai. Baris diproses: {$created}.");
+    }
+
+    private function readSpreadsheetRows(string $path): array
+    {
+        $spreadsheet = IOFactory::load($path);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        return $sheet->toArray(null, true, true, false);
     }
 }

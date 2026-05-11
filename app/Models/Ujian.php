@@ -17,6 +17,7 @@ class Ujian extends Model
         'mata_kuliah_id',
         'dosen_id',
         'nama_ujian',
+        'kode_soal',
         'deskripsi',
         'jadwal_mulai',
         'jadwal_selesai',
@@ -66,5 +67,10 @@ class Ujian extends Model
     public function soal(): HasMany
     {
         return $this->hasMany(Soal::class, 'ujian_id');
+    }
+
+    public function aksesMahasiswa(): HasMany
+    {
+        return $this->hasMany(UjianMahasiswa::class, 'ujian_id');
     }
 }

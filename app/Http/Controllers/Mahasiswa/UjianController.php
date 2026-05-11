@@ -9,6 +9,7 @@ use App\Models\NilaiUjian;
 use App\Models\PercobaanUjian;
 use App\Models\Soal;
 use App\Models\Ujian;
+use App\Models\UjianMahasiswa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,13 @@ class UjianController extends Controller
             'items' => Ujian::with(['kelas', 'mataKuliah'])
                 ->where('is_active', true)
                 ->whereIn('kelas_id', $kelasIds)
+                ->whereExists(function ($query) use ($mahasiswaId) {
+                    $query->select(DB::raw(1))
+                        ->from('ujian_mahasiswa')
+                        ->whereColumn('ujian_mahasiswa.ujian_id', 'ujian.id')
+                        ->where('ujian_mahasiswa.mahasiswa_id', $mahasiswaId)
+                        ->whereColumn('ujian_mahasiswa.kode_soal', 'ujian.kode_soal');
+                })
                 ->orderByDesc('jadwal_mulai')
                 ->get(),
         ]);
@@ -36,6 +44,7 @@ class UjianController extends Controller
         $mahasiswaId = Mahasiswa::where('user_id', auth()->id())->value('id');
         $kelasIds = DB::table('kelas_mahasiswa')->where('mahasiswa_id', $mahasiswaId)->pluck('kelas_id');
         abort_unless($kelasIds->contains($ujian->kelas_id), 403);
+        $this->abortIfNoExamAccess($ujian->id, $mahasiswaId);
 
         $attemptCount = PercobaanUjian::where('ujian_id', $ujian->id)->where('mahasiswa_id', $mahasiswaId)->count();
 
@@ -51,6 +60,7 @@ class UjianController extends Controller
         $mahasiswaId = Mahasiswa::where('user_id', auth()->id())->value('id');
         $kelasIds = DB::table('kelas_mahasiswa')->where('mahasiswa_id', $mahasiswaId)->pluck('kelas_id');
         abort_unless($kelasIds->contains($ujian->kelas_id), 403);
+        $this->abortIfNoExamAccess($ujian->id, $mahasiswaId);
 
         $attemptCount = PercobaanUjian::where('ujian_id', $ujian->id)->where('mahasiswa_id', $mahasiswaId)->count();
         abort_if($attemptCount >= $ujian->maksimal_percobaan, 403, 'Batas percobaan ujian telah tercapai.');
@@ -212,4 +222,16 @@ class UjianController extends Controller
                 'printBackRoute' => route('mahasiswa.ujian.hasil', $percobaan),
             ]);
         }
+
+    private function abortIfNoExamAccess(int $ujianId, int $mahasiswaId): void
+    {
+        $isAllowed = UjianMahasiswa::query()
+            ->join('ujian', 'ujian.id', '=', 'ujian_mahasiswa.ujian_id')
+            ->where('ujian_mahasiswa.ujian_id', $ujianId)
+            ->where('ujian_mahasiswa.mahasiswa_id', $mahasiswaId)
+            ->whereColumn('ujian_mahasiswa.kode_soal', 'ujian.kode_soal')
+            ->exists();
+
+        abort_unless($isAllowed, 403, 'Anda belum mendapatkan kode akses ujian dari dosen.');
+    }
 }

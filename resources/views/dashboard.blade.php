@@ -9,8 +9,12 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,800&display=swap" rel="stylesheet" />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="font-sans antialiased">
+<body class="font-sans antialiased" x-data="{ mobileSidebarOpen: false }" @keydown.escape.window="mobileSidebarOpen = false">
 @php
+    $setting = \App\Models\SiteSetting::first();
+    $appName = $setting?->app_name ?: config('app.name', 'UJIAN ONLINE UNUSU');
+    $logoUrl = $setting?->logo_path ? asset('storage/' . $setting->logo_path) : asset('images/default-unusu-logo.svg');
+
     $sidebarItems = match ($role) {
         \App\Models\User::ROLE_ADMIN => [
             ['label' => 'Dashboard', 'route' => 'dashboard'],
@@ -85,11 +89,43 @@
 
 <div class="min-h-screen bg-slate-100 text-slate-900">
     <div class="flex min-h-screen">
+        <div x-show="mobileSidebarOpen" x-transition.opacity class="fixed inset-0 z-40 bg-black/50 xl:hidden" @click="mobileSidebarOpen = false"></div>
+
+        <aside class="fixed inset-y-0 left-0 z-50 w-72 transform bg-gradient-to-b {{ $roleAccent['bg'] }} text-white transition-transform duration-300 ease-in-out xl:hidden"
+            :class="mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+            <div class="flex h-16 items-center justify-between gap-3 border-b border-white/10 px-6">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 shadow-md ring-1 ring-black/10">
+                        <img src="{{ $logoUrl }}" alt="Logo {{ $appName }}" class="h-full w-full object-contain">
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold tracking-wide">{{ $appName }}</div>
+                        <div class="text-xs text-white/60">{{ $roleLabel }} panel</div>
+                    </div>
+                </div>
+                <button type="button" class="rounded-lg p-2 text-white/80 hover:bg-white/10" @click="mobileSidebarOpen = false">✕</button>
+            </div>
+
+            <div class="flex-1 px-4 py-5">
+                <p class="px-3 text-xs font-semibold uppercase tracking-[0.25em] text-white/45">Menu Utama</p>
+                <nav class="mt-4 space-y-2">
+                    @foreach ($sidebarItems as $item)
+                        <a href="{{ route($item['route']) }}" @click="mobileSidebarOpen = false" class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition {{ request()->routeIs($item['route']) || ($item['route'] === 'dashboard' && request()->routeIs('dashboard')) ? 'bg-white/12 text-white shadow-lg ring-1 ring-white/10' : 'text-white/75 hover:bg-white/10 hover:text-white' }}">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-white/8 text-xs font-black ring-1 ring-white/10 group-hover:bg-white/12">{{ strtoupper(substr($item['label'], 0, 1)) }}</span>
+                            <span>{{ $item['label'] }}</span>
+                        </a>
+                    @endforeach
+                </nav>
+            </div>
+        </aside>
+
         <aside class="hidden w-72 flex-col bg-gradient-to-b {{ $roleAccent['bg'] }} text-white xl:flex">
             <div class="flex h-16 items-center gap-3 border-b border-white/10 px-6">
-                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-sm font-black text-amber-300 ring-1 ring-white/15">UTS</div>
+                <div class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5 shadow-md ring-1 ring-black/10">
+                    <img src="{{ $logoUrl }}" alt="Logo {{ $appName }}" class="h-full w-full object-contain">
+                </div>
                 <div>
-                    <div class="text-sm font-semibold tracking-wide">UJIAN ONLINE UNUSU</div>
+                    <div class="text-sm font-semibold tracking-wide">{{ $appName }}</div>
                     <div class="text-xs text-white/60">{{ $roleLabel }} panel</div>
                 </div>
             </div>
@@ -117,7 +153,7 @@
             <div class="border-b border-slate-200 bg-white/80 backdrop-blur-xl">
                 <div class="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
                     <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white xl:hidden">UTS</div>
+                        <button type="button" class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-xl text-white xl:hidden" @click="mobileSidebarOpen = true">☰</button>
                         <button type="button" class="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm xl:inline-flex">
                             <span class="mr-2">☰</span> Dashboard {{ $roleLabel }}
                         </button>

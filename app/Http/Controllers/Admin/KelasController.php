@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Dosen;
 use App\Models\Kelas;
+use App\Models\Mahasiswa;
 use App\Models\Semester;
 use App\Models\TahunAkademik;
 use Illuminate\Http\RedirectResponse;
@@ -56,11 +57,15 @@ class KelasController extends Controller
 
     public function edit(Kelas $kelas): View
     {
+        $kelas->load('mahasiswa');
+
         return view('admin.kelas.edit', [
             'item' => $kelas,
             'tahunAkademikItems' => TahunAkademik::latest()->get(),
             'semesterItems' => Semester::with('tahunAkademik')->latest()->get(),
             'dosenItems' => Dosen::with('user')->latest()->get(),
+            'mahasiswaItems' => Mahasiswa::with('user')->orderBy('nim')->get(),
+            'selectedMahasiswaIds' => $kelas->mahasiswa->pluck('id')->all(),
         ]);
     }
 
@@ -74,6 +79,8 @@ class KelasController extends Controller
             'nama_kelas' => ['required', 'string', 'max:100'],
             'angkatan' => ['nullable', 'string', 'max:10'],
             'is_active' => ['nullable', 'boolean'],
+            'mahasiswa_ids' => ['nullable', 'array'],
+            'mahasiswa_ids.*' => ['integer', 'exists:mahasiswa,id'],
         ]);
 
         $kelas->update([
@@ -85,6 +92,8 @@ class KelasController extends Controller
             'angkatan' => $data['angkatan'] ?? null,
             'is_active' => $request->boolean('is_active'),
         ]);
+
+        $kelas->mahasiswa()->sync($data['mahasiswa_ids'] ?? []);
 
         return redirect()->route('admin.kelas.index')->with('success', 'Kelas berhasil diperbarui.');
     }

@@ -47,6 +47,8 @@
                     </div>
                 @endforeach
             </div>
+
+            {{ $slot }}
         </div>
 
         <div class="bg-slate-50 p-6 lg:p-8">
