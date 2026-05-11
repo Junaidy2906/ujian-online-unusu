@@ -34,7 +34,7 @@ class UjianController extends Controller
 
         return view('dosen.ujian.create', [
             'tahunAkademikItems' => TahunAkademik::latest()->get(),
-            'kelasItems' => Kelas::withCount('mahasiswa')->whereHas('mahasiswa')->latest()->get(),
+            'kelasItems' => Kelas::withCount('mahasiswa')->orderBy('nama_kelas')->get(),
             'mataKuliahItems' => MataKuliah::where('dosen_id', $dosenId)->latest()->get(),
         ]);
     }
@@ -93,7 +93,7 @@ class UjianController extends Controller
         return view('dosen.ujian.edit', [
             'item' => $ujian,
             'tahunAkademikItems' => TahunAkademik::latest()->get(),
-            'kelasItems' => Kelas::withCount('mahasiswa')->whereHas('mahasiswa')->latest()->get(),
+            'kelasItems' => Kelas::withCount('mahasiswa')->orderBy('nama_kelas')->get(),
             'mataKuliahItems' => MataKuliah::where('dosen_id', $dosenId)->latest()->get(),
         ]);
     }

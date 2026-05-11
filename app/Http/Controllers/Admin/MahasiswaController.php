@@ -17,6 +17,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class MahasiswaController extends Controller
 {
+    private const FALLBACK_EMAIL_DOMAIN = 'student.local';
+
     public function index(): View
     {
         return view('admin.mahasiswa.index', [
@@ -181,14 +183,35 @@ class MahasiswaController extends Controller
 
                 $password = ($rowData['password'] ?? '') !== '' ? $rowData['password'] : $rowData['nim'];
 
-                $user = User::updateOrCreate(
-                    ['email' => $rowData['email']],
-                    [
+                $mahasiswaExisting = Mahasiswa::with('user')->where('nim', $rowData['nim'])->first();
+
+                if ($mahasiswaExisting) {
+                    $user = $mahasiswaExisting->user;
+                    $targetEmail = $this->resolveUniqueEmail(
+                        $rowData['email'],
+                        $rowData['nim'],
+                        $user?->id
+                    );
+
+                    $user?->update([
                         'name' => $rowData['name'],
+                        'email' => $targetEmail,
                         'password' => Hash::make($password),
                         'role' => User::ROLE_MAHASISWA,
-                    ]
-                );
+                    ]);
+                } else {
+                    $targetEmail = $this->resolveUniqueEmail(
+                        $rowData['email'],
+                        $rowData['nim']
+                    );
+
+                    $user = User::create([
+                        'name' => $rowData['name'],
+                        'email' => $targetEmail,
+                        'password' => Hash::make($password),
+                        'role' => User::ROLE_MAHASISWA,
+                    ]);
+                }
 
                 Mahasiswa::updateOrCreate(
                     ['user_id' => $user->id],
@@ -217,5 +240,34 @@ class MahasiswaController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         return $sheet->toArray(null, true, true, false);
+    }
+
+    private function resolveUniqueEmail(string $rawEmail, string $nim, ?int $ignoreUserId = null): string
+    {
+        $candidate = trim($rawEmail);
+        if ($candidate === '' || ! filter_var($candidate, FILTER_VALIDATE_EMAIL)) {
+            $candidate = $nim.'@'.self::FALLBACK_EMAIL_DOMAIN;
+        }
+
+        $base = $candidate;
+        $attempt = 0;
+
+        while ($this->emailExists($candidate, $ignoreUserId)) {
+            $attempt++;
+            $parts = explode('@', $base, 2);
+            $local = $parts[0] ?? $nim;
+            $domain = $parts[1] ?? self::FALLBACK_EMAIL_DOMAIN;
+            $candidate = $local.'+'.$attempt.'@'.$domain;
+        }
+
+        return $candidate;
+    }
+
+    private function emailExists(string $email, ?int $ignoreUserId = null): bool
+    {
+        return User::query()
+            ->where('email', $email)
+            ->when($ignoreUserId, fn ($query) => $query->where('id', '!=', $ignoreUserId))
+            ->exists();
     }
 }
