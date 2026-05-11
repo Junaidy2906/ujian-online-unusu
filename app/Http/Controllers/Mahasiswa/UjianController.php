@@ -94,8 +94,8 @@ class UjianController extends Controller
 
         $ujian = $percobaan->ujian()->with('soal.pilihanJawaban')->first();
         $totalSeconds = ((int) $ujian->durasi_menit) * 60;
-        $elapsedSeconds = $percobaan->mulai_at ? $percobaan->mulai_at->diffInSeconds(now()) : 0;
-        $remainingSeconds = max(0, $totalSeconds - $elapsedSeconds);
+        $elapsedSeconds = $percobaan->mulai_at ? (int) $percobaan->mulai_at->diffInSeconds(now()) : 0;
+        $remainingSeconds = (int) max(0, $totalSeconds - $elapsedSeconds);
 
         return view('mahasiswa.ujian.kerjakan', [
             'percobaan' => $percobaan->load('ujian.kelas', 'ujian.mataKuliah'),

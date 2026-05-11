@@ -5,9 +5,17 @@
                 <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">Kerjakan Ujian</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ $percobaan->ujian?->nama_ujian }}</p>
             </div>
-            <div id="timer" class="rounded-2xl bg-slate-950 px-5 py-3 text-center text-amber-300 shadow-sm" data-seconds="{{ $remainingSeconds }}">
-                <p class="text-xs font-semibold tracking-[0.14em]">SISA WAKTU</p>
-                <p class="text-2xl font-bold leading-none">--:--</p>
+            <div id="timer"
+                class="min-w-[240px] rounded-3xl border border-blue-900/60 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 px-5 py-4 text-amber-300 shadow-lg"
+                data-seconds="{{ (int) $remainingSeconds }}">
+                <div class="mb-2 flex items-center justify-between">
+                    <p class="text-xs font-semibold tracking-[0.18em] text-blue-200/90">SISA WAKTU</p>
+                    <span id="timer-state" class="rounded-full bg-blue-500/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-200">Aman</span>
+                </div>
+                <p class="text-3xl font-extrabold leading-none tabular-nums">--:--:--</p>
+                <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15">
+                    <div id="timer-progress" class="h-full w-full rounded-full bg-gradient-to-r from-emerald-300 via-amber-300 to-rose-400 transition-all duration-700"></div>
+                </div>
             </div>
         </div>
     </x-slot>
@@ -197,13 +205,32 @@
         (function () {
             const timerElement = document.getElementById('timer');
             const timerText = timerElement.querySelector('p:last-child');
+            const timerState = document.getElementById('timer-state');
+            const timerProgress = document.getElementById('timer-progress');
             const form = document.getElementById('exam-form');
-            let remaining = Number(timerElement.dataset.seconds || 0);
+            const initial = Math.max(0, parseInt(timerElement.dataset.seconds || '0', 10));
+            let remaining = initial;
 
             const render = () => {
-                const minutes = String(Math.floor(remaining / 60)).padStart(2, '0');
-                const seconds = String(remaining % 60).padStart(2, '0');
-                timerText.textContent = `${minutes}:${seconds}`;
+                const total = Math.max(0, Math.floor(remaining));
+                const hours = String(Math.floor(total / 3600)).padStart(2, '0');
+                const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+                const seconds = String(total % 60).padStart(2, '0');
+                timerText.textContent = `${hours}:${minutes}:${seconds}`;
+
+                const ratio = initial > 0 ? Math.max(0, (total / initial) * 100) : 0;
+                timerProgress.style.width = `${ratio}%`;
+
+                if (total <= 300) {
+                    timerState.textContent = 'Kritis';
+                    timerState.className = 'rounded-full bg-rose-500/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-rose-200';
+                } else if (total <= 900) {
+                    timerState.textContent = 'Waspada';
+                    timerState.className = 'rounded-full bg-amber-500/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200';
+                } else {
+                    timerState.textContent = 'Aman';
+                    timerState.className = 'rounded-full bg-blue-500/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-200';
+                }
             };
 
             render();
