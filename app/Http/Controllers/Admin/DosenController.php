@@ -17,10 +17,38 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DosenController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = trim((string) $request->query('q', ''));
+        $status = (string) $request->query('status', 'semua');
+
+        $query = Dosen::with('user');
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search): void {
+                $builder
+                    ->where('nidn', 'like', '%'.$search.'%')
+                    ->orWhere('telepon', 'like', '%'.$search.'%')
+                    ->orWhereHas('user', function ($userQuery) use ($search): void {
+                        $userQuery
+                            ->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('email', 'like', '%'.$search.'%');
+                    });
+            });
+        }
+
+        if ($status === 'aktif') {
+            $query->where('is_active', true);
+        } elseif ($status === 'nonaktif') {
+            $query->where('is_active', false);
+        }
+
         return view('admin.dosen.index', [
-            'items' => Dosen::with('user')->latest()->get(),
+            'items' => $query->latest()->get(),
+            'filters' => [
+                'q' => $search,
+                'status' => in_array($status, ['semua', 'aktif', 'nonaktif'], true) ? $status : 'semua',
+            ],
         ]);
     }
 

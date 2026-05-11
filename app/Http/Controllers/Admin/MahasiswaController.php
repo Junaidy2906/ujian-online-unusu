@@ -19,10 +19,49 @@ class MahasiswaController extends Controller
 {
     private const FALLBACK_EMAIL_DOMAIN = 'student.local';
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = trim((string) $request->query('q', ''));
+        $status = (string) $request->query('status', 'semua');
+        $prodi = trim((string) $request->query('prodi', ''));
+
+        $query = Mahasiswa::with('user');
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search): void {
+                $builder
+                    ->where('nim', 'like', '%'.$search.'%')
+                    ->orWhere('angkatan', 'like', '%'.$search.'%')
+                    ->orWhereHas('user', function ($userQuery) use ($search): void {
+                        $userQuery
+                            ->where('name', 'like', '%'.$search.'%')
+                            ->orWhere('email', 'like', '%'.$search.'%');
+                    });
+            });
+        }
+
+        if (in_array($status, ['aktif', 'cuti', 'nonaktif'], true)) {
+            $query->where('status', $status);
+        }
+
+        if ($prodi !== '') {
+            $query->where('prodi', $prodi);
+        }
+
         return view('admin.mahasiswa.index', [
-            'items' => Mahasiswa::with('user')->latest()->get(),
+            'items' => $query->latest()->get(),
+            'prodiItems' => Mahasiswa::query()
+                ->select('prodi')
+                ->whereNotNull('prodi')
+                ->where('prodi', '!=', '')
+                ->distinct()
+                ->orderBy('prodi')
+                ->pluck('prodi'),
+            'filters' => [
+                'q' => $search,
+                'status' => in_array($status, ['semua', 'aktif', 'cuti', 'nonaktif'], true) ? $status : 'semua',
+                'prodi' => $prodi,
+            ],
         ]);
     }
 

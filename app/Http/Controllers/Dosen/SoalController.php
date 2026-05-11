@@ -10,6 +10,7 @@ use App\Models\Ujian;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,15 +20,76 @@ use Illuminate\View\View;
 
 class SoalController extends Controller
 {
-    public function index(Ujian $ujian): View
+    public function index(Request $request, Ujian $ujian): View
     {
         $dosenId = Dosen::where('user_id', auth()->id())->value('id');
         abort_unless($ujian->dosen_id === $dosenId, 403);
 
+        $search = trim((string) $request->query('q', ''));
+        $tipe = (string) $request->query('tipe', 'semua');
+
+        $query = Soal::with('pilihanJawaban')->where('ujian_id', $ujian->id);
+
+        if (in_array($tipe, ['pg', 'essay'], true)) {
+            $query->where('tipe', $tipe);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search): void {
+                $builder
+                    ->where('pertanyaan', 'like', '%'.$search.'%')
+                    ->orWhere('jawaban_benar', 'like', '%'.$search.'%');
+            });
+        }
+
         return view('dosen.soal.index', [
             'ujian' => $ujian,
-            'items' => Soal::with('pilihanJawaban')->where('ujian_id', $ujian->id)->orderBy('nomor')->get(),
+            'items' => $query->orderBy('nomor')->get(),
+            'filters' => [
+                'q' => $search,
+                'tipe' => in_array($tipe, ['semua', 'pg', 'essay'], true) ? $tipe : 'semua',
+            ],
         ]);
+    }
+
+    public function reorder(Request $request, Ujian $ujian): RedirectResponse|JsonResponse
+    {
+        $dosenId = Dosen::where('user_id', auth()->id())->value('id');
+        abort_unless($ujian->dosen_id === $dosenId, 403);
+
+        $data = $request->validate([
+            'order' => ['required', 'array', 'min:1'],
+            'order.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        $orderedIds = collect($data['order'])->map(fn ($id) => (int) $id)->values();
+        $existingIds = Soal::query()
+            ->where('ujian_id', $ujian->id)
+            ->whereIn('id', $orderedIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        abort_unless($orderedIds->count() === $existingIds->count(), 422);
+
+        DB::transaction(function () use ($orderedIds, $ujian): void {
+            foreach ($orderedIds as $index => $soalId) {
+                Soal::query()
+                    ->where('id', $soalId)
+                    ->where('ujian_id', $ujian->id)
+                    ->update(['nomor' => $index + 1]);
+            }
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Urutan soal berhasil diperbarui.',
+            ]);
+        }
+
+        return redirect()
+            ->route('dosen.ujian.soal.index', $ujian)
+            ->with('success', 'Urutan soal berhasil diperbarui.');
     }
 
     public function create(Ujian $ujian): View

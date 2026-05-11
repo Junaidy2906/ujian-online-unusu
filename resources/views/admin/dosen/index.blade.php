@@ -1,4 +1,9 @@
 <x-admin-layout :title="'Data Dosen'">
+    @php
+        $q = $filters['q'] ?? '';
+        $status = $filters['status'] ?? 'semua';
+    @endphp
+
     <div class="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div>
             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Data Dosen</h3>
@@ -16,6 +21,26 @@
             <button type="submit" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Upload Data Dosen</button>
         </div>
         @error('template_file')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+    </form>
+    <form method="GET" action="{{ route('admin.dosen.index') }}" class="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div class="grid gap-3 md:grid-cols-4">
+            <div class="md:col-span-2">
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Cari Dosen</label>
+                <input type="text" name="q" value="{{ $q }}" placeholder="Nama, email, NIDN, telepon..." class="w-full rounded-2xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Status</label>
+                <select name="status" class="w-full rounded-2xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+                    <option value="semua" @selected($status === 'semua')>Semua</option>
+                    <option value="aktif" @selected($status === 'aktif')>Aktif</option>
+                    <option value="nonaktif" @selected($status === 'nonaktif')>Nonaktif</option>
+                </select>
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="submit" class="w-full rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-amber-300">Filter</button>
+                <a href="{{ route('admin.dosen.index') }}" class="w-full rounded-2xl border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-700 dark:border-gray-600 dark:text-gray-200">Reset</a>
+            </div>
+        </div>
     </form>
 
     <div class="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">

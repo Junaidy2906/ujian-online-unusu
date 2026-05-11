@@ -55,6 +55,7 @@ Route::middleware(['auth', 'role:dosen'])->prefix('dosen')->name('dosen.')->grou
     Route::get('ujian/{ujian}/hasil', [DosenUjianController::class, 'hasil'])->name('ujian.hasil');
     Route::get('ujian/{ujian}/akses-mahasiswa', [DosenUjianController::class, 'aksesMahasiswa'])->name('ujian.akses-mahasiswa');
     Route::post('ujian/{ujian}/akses-mahasiswa', [DosenUjianController::class, 'simpanAksesMahasiswa'])->name('ujian.akses-mahasiswa.simpan');
+    Route::post('ujian/{ujian}/soal-reorder', [SoalController::class, 'reorder'])->name('ujian.soal.reorder');
     Route::resource('ujian.soal', SoalController::class)->except(['show']);
     Route::get('ujian/{ujian}/soal-import', [SoalController::class, 'importForm'])->name('ujian.soal.import.form');
     Route::post('ujian/{ujian}/soal-import', [SoalController::class, 'importStore'])->name('ujian.soal.import.store');
