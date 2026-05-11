@@ -37,6 +37,7 @@
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">NIM</th>
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Nama Mahasiswa</th>
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Akses Soal</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Tambahan Percobaan</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -48,7 +49,7 @@
                             [$prodi, $kelas] = explode('||', $key);
                         @endphp
                         <tr>
-                            <td colspan="3" class="bg-slate-100 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:bg-slate-700/60 dark:text-slate-100">
+                            <td colspan="4" class="bg-slate-100 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:bg-slate-700/60 dark:text-slate-100">
                                 Prodi: {{ $prodi }} | Kelas: {{ $kelas }}
                             </td>
                         </tr>
@@ -65,11 +66,21 @@
                                         class="w-full rounded-2xl border-gray-300 bg-white text-sm uppercase dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
                                     >
                                 </td>
+                                <td class="px-6 py-4 text-sm">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="20"
+                                        name="tambahan_percobaan[{{ $mhs->id }}]"
+                                        value="{{ old('tambahan_percobaan.'.$mhs->id, (int) ($tambahanByMahasiswa[$mhs->id] ?? 0)) }}"
+                                        class="w-28 rounded-2xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                                    >
+                                </td>
                             </tr>
                         @endforeach
                     @empty
                         <tr>
-                            <td colspan="3" class="px-6 py-10 text-center text-sm text-gray-500">Belum ada mahasiswa di kelas ini.</td>
+                            <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">Belum ada mahasiswa di kelas ini.</td>
                         </tr>
                     @endforelse
                 </tbody>

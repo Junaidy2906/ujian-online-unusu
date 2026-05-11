@@ -13,7 +13,15 @@ class UjianMahasiswa extends Model
         'ujian_id',
         'mahasiswa_id',
         'kode_soal',
+        'tambahan_percobaan',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'tambahan_percobaan' => 'integer',
+        ];
+    }
 
     public function ujian(): BelongsTo
     {

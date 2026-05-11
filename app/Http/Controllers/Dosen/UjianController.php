@@ -179,13 +179,17 @@ class UjianController extends Controller
             ->orderBy('nim')
             ->get();
 
-        $aksesByMahasiswa = UjianMahasiswa::where('ujian_id', $ujian->id)
-            ->pluck('kode_soal', 'mahasiswa_id');
+        $aksesItems = UjianMahasiswa::where('ujian_id', $ujian->id)
+            ->get(['mahasiswa_id', 'kode_soal', 'tambahan_percobaan']);
+
+        $aksesByMahasiswa = $aksesItems->pluck('kode_soal', 'mahasiswa_id');
+        $tambahanByMahasiswa = $aksesItems->pluck('tambahan_percobaan', 'mahasiswa_id');
 
         return view('dosen.ujian.akses-mahasiswa', [
             'ujian' => $ujian->load('kelas', 'mataKuliah'),
             'mahasiswaItems' => $mahasiswaItems,
             'aksesByMahasiswa' => $aksesByMahasiswa,
+            'tambahanByMahasiswa' => $tambahanByMahasiswa,
         ]);
     }
 
@@ -201,6 +205,8 @@ class UjianController extends Controller
         $data = $request->validate([
             'kode' => ['nullable', 'array'],
             'kode.*' => ['nullable', 'string', 'max:30'],
+            'tambahan_percobaan' => ['nullable', 'array'],
+            'tambahan_percobaan.*' => ['nullable', 'integer', 'min:0', 'max:20'],
         ]);
 
         $allowedMahasiswaIds = Mahasiswa::query()
@@ -211,6 +217,7 @@ class UjianController extends Controller
             ->all();
 
         $inputKode = $data['kode'] ?? [];
+        $inputTambahan = $data['tambahan_percobaan'] ?? [];
         $action = (string) $request->input('bulk_action', '');
         $bulkKode = strtoupper(trim((string) $request->input('bulk_kode', '')));
 
@@ -237,6 +244,7 @@ class UjianController extends Controller
 
         foreach ($allowedMahasiswaIds as $mahasiswaId) {
             $kode = strtoupper(trim((string) ($inputKode[$mahasiswaId] ?? '')));
+            $tambahanPercobaan = max(0, (int) ($inputTambahan[$mahasiswaId] ?? 0));
 
             if ($kode === '') {
                 UjianMahasiswa::where('ujian_id', $ujian->id)->where('mahasiswa_id', $mahasiswaId)->delete();
@@ -245,7 +253,10 @@ class UjianController extends Controller
 
             UjianMahasiswa::updateOrCreate(
                 ['ujian_id' => $ujian->id, 'mahasiswa_id' => $mahasiswaId],
-                ['kode_soal' => $kode]
+                [
+                    'kode_soal' => $kode,
+                    'tambahan_percobaan' => $tambahanPercobaan,
+                ]
             );
         }
 

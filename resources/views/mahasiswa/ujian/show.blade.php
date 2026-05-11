@@ -13,7 +13,7 @@
                 <div class="mt-4 grid gap-3 text-sm text-gray-700 dark:text-gray-200 sm:grid-cols-2">
                     <div>Durasi: {{ $ujian->durasi_menit }} menit</div>
                     <div>Batas lulus: {{ $ujian->nilai_minimum_lulus }}</div>
-                    <div>Max percobaan: {{ $ujian->maksimal_percobaan }}</div>
+                    <div>Max percobaan: {{ $allowedAttempts ?? $ujian->maksimal_percobaan }}</div>
                     <div>Percobaan Anda: {{ $attemptCount }}</div>
                 </div>
                 @if ($lastScore)

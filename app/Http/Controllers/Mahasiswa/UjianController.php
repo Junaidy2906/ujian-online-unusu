@@ -47,10 +47,12 @@ class UjianController extends Controller
         $this->abortIfNoExamAccess($ujian->id, $mahasiswaId);
 
         $attemptCount = PercobaanUjian::where('ujian_id', $ujian->id)->where('mahasiswa_id', $mahasiswaId)->count();
+        $allowedAttempts = $this->resolveAllowedAttempts($ujian->id, $mahasiswaId, (int) $ujian->maksimal_percobaan);
 
         return view('mahasiswa.ujian.show', [
             'ujian' => $ujian->load('kelas', 'mataKuliah'),
             'attemptCount' => $attemptCount,
+            'allowedAttempts' => $allowedAttempts,
             'lastScore' => NilaiUjian::where('ujian_id', $ujian->id)->where('mahasiswa_id', $mahasiswaId)->latest()->first(),
         ]);
     }
@@ -63,7 +65,8 @@ class UjianController extends Controller
         $this->abortIfNoExamAccess($ujian->id, $mahasiswaId);
 
         $attemptCount = PercobaanUjian::where('ujian_id', $ujian->id)->where('mahasiswa_id', $mahasiswaId)->count();
-        abort_if($attemptCount >= $ujian->maksimal_percobaan, 403, 'Batas percobaan ujian telah tercapai.');
+        $allowedAttempts = $this->resolveAllowedAttempts($ujian->id, $mahasiswaId, (int) $ujian->maksimal_percobaan);
+        abort_if($attemptCount >= $allowedAttempts, 403, 'Batas percobaan ujian telah tercapai.');
 
         $nextAttempt = $attemptCount + 1;
 
@@ -243,5 +246,15 @@ class UjianController extends Controller
             ->exists();
 
         abort_unless($isAllowed, 403, 'Anda belum mendapatkan kode akses ujian dari dosen.');
+    }
+
+    private function resolveAllowedAttempts(int $ujianId, int $mahasiswaId, int $defaultMax): int
+    {
+        $tambahan = (int) UjianMahasiswa::query()
+            ->where('ujian_id', $ujianId)
+            ->where('mahasiswa_id', $mahasiswaId)
+            ->value('tambahan_percobaan');
+
+        return max(1, $defaultMax + max(0, $tambahan));
     }
 }
