@@ -1,4 +1,10 @@
 <x-admin-layout :title="'Hasil Ujian'">
+    @if (session('success'))
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div>
             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $ujian->nama_ujian }}</h3>
@@ -25,6 +31,7 @@
                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Akhir</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Waktu Submit</th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -46,10 +53,17 @@
                             <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $item->nilai_akhir ?? '-' }}</td>
                             <td class="px-6 py-4 text-sm">{{ $item->status_penilaian }}</td>
                             <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ $item->created_at?->format('d M Y H:i:s') ?? '-' }}</td>
+                            <td class="px-6 py-4 text-sm">
+                                @if ($item->status_penilaian === 'menunggu_koreksi')
+                                    <a href="{{ route('dosen.ujian.hasil.koreksi-essay', [$ujian, $item]) }}" class="rounded-xl border border-amber-200 px-3 py-1.5 text-amber-700">Koreksi Essai</a>
+                                @else
+                                    <span class="text-slate-400">-</span>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 @empty
-                    <tr><td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500">Belum ada hasil.</td></tr>
+                    <tr><td colspan="8" class="px-6 py-10 text-center text-sm text-gray-500">Belum ada hasil.</td></tr>
                 @endforelse
             </tbody>
         </table>

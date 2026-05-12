@@ -53,6 +53,8 @@ Route::middleware(['auth', 'role:dosen'])->prefix('dosen')->name('dosen.')->grou
     Route::get('mahasiswa', [DosenMahasiswaController::class, 'index'])->name('mahasiswa.index');
     Route::resource('ujian', DosenUjianController::class)->except(['show']);
     Route::get('ujian/{ujian}/hasil', [DosenUjianController::class, 'hasil'])->name('ujian.hasil');
+    Route::get('ujian/{ujian}/hasil/{nilai}/koreksi-essay', [DosenUjianController::class, 'koreksiEssay'])->name('ujian.hasil.koreksi-essay');
+    Route::post('ujian/{ujian}/hasil/{nilai}/koreksi-essay', [DosenUjianController::class, 'simpanKoreksiEssay'])->name('ujian.hasil.koreksi-essay.simpan');
     Route::get('ujian/{ujian}/akses-mahasiswa', [DosenUjianController::class, 'aksesMahasiswa'])->name('ujian.akses-mahasiswa');
     Route::post('ujian/{ujian}/akses-mahasiswa', [DosenUjianController::class, 'simpanAksesMahasiswa'])->name('ujian.akses-mahasiswa.simpan');
     Route::post('ujian/{ujian}/soal-reorder', [SoalController::class, 'reorder'])->name('ujian.soal.reorder');

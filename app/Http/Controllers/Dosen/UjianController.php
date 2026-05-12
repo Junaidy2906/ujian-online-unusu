@@ -7,13 +7,16 @@ use App\Models\Dosen;
 use App\Models\Kelas;
 use App\Models\MataKuliah;
 use App\Models\Mahasiswa;
+use App\Models\JawabanMahasiswa;
 use App\Models\NilaiUjian;
+use App\Models\PercobaanUjian;
 use App\Models\Soal;
 use App\Models\TahunAkademik;
 use App\Models\Ujian;
 use App\Models\UjianMahasiswa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -195,6 +198,99 @@ class UjianController extends Controller
             'aksesByMahasiswa' => $aksesByMahasiswa,
             'tambahanByMahasiswa' => $tambahanByMahasiswa,
         ]);
+    }
+
+    public function koreksiEssay(Ujian $ujian, NilaiUjian $nilai): View
+    {
+        $dosenId = Dosen::where('user_id', auth()->id())->value('id');
+        abort_unless($ujian->dosen_id === $dosenId, 403);
+        abort_unless($nilai->ujian_id === $ujian->id, 404);
+
+        $percobaan = PercobaanUjian::with(['mahasiswa.user'])
+            ->where('id', $nilai->percobaan_ujian_id)
+            ->where('ujian_id', $ujian->id)
+            ->firstOrFail();
+
+        $jawabanEssay = JawabanMahasiswa::with('soal')
+            ->where('percobaan_ujian_id', $percobaan->id)
+            ->whereHas('soal', fn ($q) => $q->where('tipe', 'essay'))
+            ->get();
+
+        return view('dosen.ujian.koreksi-essay', [
+            'ujian' => $ujian->load('kelas', 'mataKuliah'),
+            'nilai' => $nilai,
+            'percobaan' => $percobaan,
+            'jawabanEssay' => $jawabanEssay,
+        ]);
+    }
+
+    public function simpanKoreksiEssay(Request $request, Ujian $ujian, NilaiUjian $nilai): RedirectResponse
+    {
+        $dosenId = Dosen::where('user_id', auth()->id())->value('id');
+        abort_unless($ujian->dosen_id === $dosenId, 403);
+        abort_unless($nilai->ujian_id === $ujian->id, 404);
+
+        $percobaan = PercobaanUjian::where('id', $nilai->percobaan_ujian_id)
+            ->where('ujian_id', $ujian->id)
+            ->firstOrFail();
+
+        $jawabanEssay = JawabanMahasiswa::with('soal')
+            ->where('percobaan_ujian_id', $percobaan->id)
+            ->whereHas('soal', fn ($q) => $q->where('tipe', 'essay'))
+            ->get();
+
+        $rules = [
+            'nilai' => ['required', 'array'],
+        ];
+
+        foreach ($jawabanEssay as $jawaban) {
+            $maxPoin = (float) ($jawaban->soal?->poin ?? 0);
+            $rules['nilai.'.$jawaban->id] = ['required', 'numeric', 'min:0', 'max:'.$maxPoin];
+        }
+
+        $data = $request->validate($rules);
+        $inputNilai = $data['nilai'] ?? [];
+
+        DB::transaction(function () use ($jawabanEssay, $inputNilai, $ujian, $percobaan, $nilai): void {
+            foreach ($jawabanEssay as $jawaban) {
+                $jawaban->update([
+                    'nilai' => (float) ($inputNilai[$jawaban->id] ?? 0),
+                ]);
+            }
+
+            $essayRaw = (float) JawabanMahasiswa::query()
+                ->where('percobaan_ujian_id', $percobaan->id)
+                ->whereHas('soal', fn ($q) => $q->where('tipe', 'essay'))
+                ->sum('nilai');
+
+            $totalEssayPoin = (float) Soal::query()
+                ->where('ujian_id', $ujian->id)
+                ->where('tipe', 'essay')
+                ->sum('poin');
+
+            $essayScore100 = $totalEssayPoin > 0 ? ($essayRaw / $totalEssayPoin) * 100 : 0;
+            $nilaiEssayFinal = round($essayScore100 * ((float) $ujian->bobot_essay / 100), 2);
+            $nilaiPgFinal = (float) ($percobaan->nilai_pg ?? $nilai->nilai_pg ?? 0);
+            $nilaiAkhir = round($nilaiPgFinal + $nilaiEssayFinal, 2);
+            $isLulus = $nilaiAkhir >= (float) $ujian->nilai_minimum_lulus;
+
+            $percobaan->update([
+                'nilai_essay' => $nilaiEssayFinal,
+                'nilai_akhir' => $nilaiAkhir,
+                'is_lulus' => $isLulus,
+            ]);
+
+            $nilai->update([
+                'nilai_essay' => $nilaiEssayFinal,
+                'nilai_akhir' => $nilaiAkhir,
+                'status_penilaian' => 'selesai',
+                'status_lulus' => $isLulus,
+                'catatan' => null,
+                'dinilai_at' => now(),
+            ]);
+        });
+
+        return redirect()->route('dosen.ujian.hasil', $ujian)->with('success', 'Koreksi essai berhasil disimpan.');
     }
 
     public function simpanAksesMahasiswa(Request $request, Ujian $ujian): RedirectResponse
