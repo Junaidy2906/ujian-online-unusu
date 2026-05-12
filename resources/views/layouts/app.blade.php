@@ -190,7 +190,7 @@
                 </aside>
 
                 <main class="flex-1">
-                    <div class="border-b border-slate-200 bg-white/80 backdrop-blur-xl">
+                    <div class="relative z-40 border-b border-slate-200 bg-white/80 backdrop-blur-xl">
                         <div class="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
                             <div class="flex items-center gap-3">
                                 <button type="button" class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-xl text-white xl:hidden" @click="mobileSidebarOpen = true">☰</button>
@@ -204,7 +204,7 @@
                             </div>
 
                             <div class="flex items-center gap-3">
-                                <div x-data="{ open: false }" class="relative">
+                                <div x-data="{ open: false }" class="relative z-50">
                                     <button @click="open = !open" class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
                                         <div class="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white">{{ strtoupper(substr($currentUser?->name ?? 'U', 0, 1)) }}</div>
                                         <div class="hidden text-left sm:block">
@@ -214,7 +214,7 @@
                                         <span class="text-slate-400">▾</span>
                                     </button>
 
-                                    <div x-show="open" @click.outside="open = false" x-transition class="absolute right-0 z-20 mt-3 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                                    <div x-show="open" @click.outside="open = false" x-transition class="absolute right-0 z-[90] mt-3 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
                                         <a href="{{ route('profile.edit') }}" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-50">Profile</a>
                                         <form method="POST" action="{{ route('logout') }}">
                                             @csrf
