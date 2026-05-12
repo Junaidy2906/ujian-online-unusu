@@ -44,6 +44,7 @@ class UjianController extends Controller
         $mahasiswaId = Mahasiswa::where('user_id', auth()->id())->value('id');
         $kelasIds = DB::table('kelas_mahasiswa')->where('mahasiswa_id', $mahasiswaId)->pluck('kelas_id');
         abort_unless($kelasIds->contains($ujian->kelas_id), 403);
+        $this->abortIfExamNotStarted($ujian);
         $this->abortIfExamExpired($ujian);
         $this->abortIfNoExamAccess($ujian->id, $mahasiswaId);
 
@@ -63,6 +64,7 @@ class UjianController extends Controller
         $mahasiswaId = Mahasiswa::where('user_id', auth()->id())->value('id');
         $kelasIds = DB::table('kelas_mahasiswa')->where('mahasiswa_id', $mahasiswaId)->pluck('kelas_id');
         abort_unless($kelasIds->contains($ujian->kelas_id), 403);
+        $this->abortIfExamNotStarted($ujian);
         $this->abortIfExamExpired($ujian);
         $this->abortIfNoExamAccess($ujian->id, $mahasiswaId);
 
@@ -258,6 +260,13 @@ class UjianController extends Controller
             ->value('tambahan_percobaan');
 
         return max(1, $defaultMax + max(0, $tambahan));
+    }
+
+    private function abortIfExamNotStarted(Ujian $ujian): void
+    {
+        if ($ujian->jadwal_mulai && now()->lessThan($ujian->jadwal_mulai)) {
+            abort(403, 'Ujian belum dimulai.');
+        }
     }
 
     private function abortIfExamExpired(Ujian $ujian): void
