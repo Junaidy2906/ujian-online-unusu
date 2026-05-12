@@ -41,6 +41,10 @@
                         <div class="mt-2 text-sm font-semibold text-slate-900">{{ $item->prodi ?? '-' }}</div>
                     </div>
                     <div class="rounded-2xl bg-slate-50 p-4">
+                        <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Semester</div>
+                        <div class="mt-2 text-sm font-semibold text-slate-900">{{ $item->semester ?? '-' }}</div>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 p-4">
                         <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Telepon</div>
                         <div class="mt-2 text-sm font-semibold text-slate-900">{{ $item->telepon ?? '-' }}</div>
                     </div>

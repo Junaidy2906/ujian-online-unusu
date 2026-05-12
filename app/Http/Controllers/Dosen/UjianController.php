@@ -207,6 +207,7 @@ class UjianController extends Controller
             'kode.*' => ['nullable', 'string', 'max:30'],
             'tambahan_percobaan' => ['nullable', 'array'],
             'tambahan_percobaan.*' => ['nullable', 'integer', 'min:0', 'max:20'],
+            'group_kelas_id' => ['nullable', 'integer'],
         ]);
 
         $allowedMahasiswaIds = Mahasiswa::query()
@@ -215,6 +216,12 @@ class UjianController extends Controller
             })
             ->pluck('id')
             ->all();
+
+        $allowedByKelas = Mahasiswa::with('kelas')
+            ->whereIn('id', $allowedMahasiswaIds)
+            ->get()
+            ->groupBy(fn (Mahasiswa $mhs) => (int) ($mhs->kelas->first()?->id ?? 0))
+            ->map(fn ($items) => $items->pluck('id')->all());
 
         $inputKode = $data['kode'] ?? [];
         $inputTambahan = $data['tambahan_percobaan'] ?? [];
@@ -240,6 +247,36 @@ class UjianController extends Controller
             UjianMahasiswa::where('ujian_id', $ujian->id)->delete();
 
             return redirect()->route('dosen.ujian.akses-mahasiswa', $ujian)->with('success', 'Semua akses mahasiswa berhasil dikosongkan.');
+        }
+
+        if (in_array($action, ['pair_group', 'clear_group'], true)) {
+            $groupKelasId = (int) ($data['group_kelas_id'] ?? 0);
+            $targetMahasiswaIds = $allowedByKelas->get($groupKelasId, []);
+
+            if (empty($targetMahasiswaIds)) {
+                return redirect()->route('dosen.ujian.akses-mahasiswa', $ujian)->withErrors('Kelompok kelas tidak valid.');
+            }
+
+            if ($action === 'clear_group') {
+                UjianMahasiswa::where('ujian_id', $ujian->id)
+                    ->whereIn('mahasiswa_id', $targetMahasiswaIds)
+                    ->delete();
+
+                return redirect()->route('dosen.ujian.akses-mahasiswa', $ujian)->with('success', 'Akses mahasiswa per kelas berhasil dikosongkan.');
+            }
+
+            if ($bulkKode === '') {
+                $bulkKode = (string) $ujian->kode_soal;
+            }
+
+            foreach ($targetMahasiswaIds as $mahasiswaId) {
+                UjianMahasiswa::updateOrCreate(
+                    ['ujian_id' => $ujian->id, 'mahasiswa_id' => $mahasiswaId],
+                    ['kode_soal' => $bulkKode]
+                );
+            }
+
+            return redirect()->route('dosen.ujian.akses-mahasiswa', $ujian)->with('success', 'Mahasiswa pada kelas terpilih berhasil dipasangkan kode.');
         }
 
         foreach ($allowedMahasiswaIds as $mahasiswaId) {

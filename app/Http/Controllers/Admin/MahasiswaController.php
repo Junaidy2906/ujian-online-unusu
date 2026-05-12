@@ -32,6 +32,7 @@ class MahasiswaController extends Controller
                 $builder
                     ->where('nim', 'like', '%'.$search.'%')
                     ->orWhere('angkatan', 'like', '%'.$search.'%')
+                    ->orWhere('semester', 'like', '%'.$search.'%')
                     ->orWhereHas('user', function ($userQuery) use ($search): void {
                         $userQuery
                             ->where('name', 'like', '%'.$search.'%')
@@ -90,6 +91,7 @@ class MahasiswaController extends Controller
             'password' => ['nullable', 'string', 'min:8'],
             'nim' => ['required', 'string', 'max:30', 'unique:mahasiswa,nim'],
             'prodi' => ['nullable', 'string', 'max:100'],
+            'semester' => ['nullable', 'integer', 'min:1', 'max:14'],
             'angkatan' => ['nullable', 'string', 'max:10'],
             'telepon' => ['nullable', 'string', 'max:20'],
             'alamat' => ['nullable', 'string'],
@@ -109,6 +111,7 @@ class MahasiswaController extends Controller
                 'user_id' => $user->id,
                 'nim' => $data['nim'],
                 'prodi' => $data['prodi'] ?? null,
+                'semester' => $data['semester'] ?? null,
                 'angkatan' => $data['angkatan'] ?? null,
                 'telepon' => $data['telepon'] ?? null,
                 'alamat' => $data['alamat'] ?? null,
@@ -138,6 +141,7 @@ class MahasiswaController extends Controller
             'password' => ['nullable', 'string', 'min:8'],
             'nim' => ['required', 'string', 'max:30', 'unique:mahasiswa,nim,'.$mahasiswa->id],
             'prodi' => ['nullable', 'string', 'max:100'],
+            'semester' => ['nullable', 'integer', 'min:1', 'max:14'],
             'angkatan' => ['nullable', 'string', 'max:10'],
             'telepon' => ['nullable', 'string', 'max:20'],
             'alamat' => ['nullable', 'string'],
@@ -155,6 +159,7 @@ class MahasiswaController extends Controller
             $mahasiswa->update([
                 'nim' => $data['nim'],
                 'prodi' => $data['prodi'] ?? null,
+                'semester' => $data['semester'] ?? null,
                 'angkatan' => $data['angkatan'] ?? null,
                 'telepon' => $data['telepon'] ?? null,
                 'alamat' => $data['alamat'] ?? null,
@@ -176,8 +181,8 @@ class MahasiswaController extends Controller
 
     public function downloadTemplate(): BinaryFileResponse
     {
-        $headers = ['name', 'email', 'password', 'nim', 'prodi', 'angkatan', 'telepon', 'alamat', 'status'];
-        $sample = ['Nama Mahasiswa', 'mahasiswa@contoh.ac.id', 'password123', '23100001', 'Teknik Informatika', '2023', '08123456789', 'Alamat mahasiswa', 'aktif'];
+        $headers = ['name', 'email', 'password', 'nim', 'prodi', 'semester', 'angkatan', 'telepon', 'alamat', 'status'];
+        $sample = ['Nama Mahasiswa', 'mahasiswa@contoh.ac.id', 'password123', '23100001', 'Teknik Informatika', '2', '2023', '08123456789', 'Alamat mahasiswa', 'aktif'];
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -257,6 +262,7 @@ class MahasiswaController extends Controller
                     [
                         'nim' => $rowData['nim'],
                         'prodi' => $rowData['prodi'] !== '' ? $rowData['prodi'] : null,
+                        'semester' => ($rowData['semester'] ?? '') !== '' ? max(1, min(14, (int) $rowData['semester'])) : null,
                         'angkatan' => $rowData['angkatan'] !== '' ? $rowData['angkatan'] : null,
                         'telepon' => $rowData['telepon'] !== '' ? $rowData['telepon'] : null,
                         'alamat' => $rowData['alamat'] !== '' ? $rowData['alamat'] : null,

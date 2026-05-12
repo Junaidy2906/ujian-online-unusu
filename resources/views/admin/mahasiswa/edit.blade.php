@@ -10,6 +10,7 @@
             ['label' => 'Password Baru', 'name' => 'password', 'type' => 'password'],
             ['label' => 'NIM', 'name' => 'nim'],
             ['label' => 'Prodi', 'name' => 'prodi'],
+            ['label' => 'Semester', 'name' => 'semester', 'type' => 'number'],
             ['label' => 'Angkatan', 'name' => 'angkatan'],
             ['label' => 'Telepon', 'name' => 'telepon'],
             ['label' => 'Alamat', 'name' => 'alamat', 'type' => 'textarea', 'full' => true],

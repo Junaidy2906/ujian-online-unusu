@@ -36,27 +36,42 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">NIM</th>
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Nama Mahasiswa</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Semester</th>
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Kode Akses Soal</th>
                         <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Tambahan Percobaan</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @php
-                        $grouped = $mahasiswaItems->groupBy(fn ($m) => ($m->prodi ?: 'Tanpa Prodi').'||'.($m->kelas->first()?->nama_kelas ?: 'Tanpa Kelas'));
+                        $grouped = $mahasiswaItems->groupBy(fn ($m) => (int) ($m->kelas->first()?->id ?? 0));
                     @endphp
                     @forelse ($grouped as $key => $members)
                         @php
-                            [$prodi, $kelas] = explode('||', $key);
+                            $kelas = $members->first()?->kelas->first()?->nama_kelas ?: 'Tanpa Kelas';
+                            $prodi = $members->pluck('prodi')->filter()->unique()->implode(', ');
                         @endphp
                         <tr>
-                            <td colspan="4" class="bg-slate-100 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:bg-slate-700/60 dark:text-slate-100">
-                                Prodi: {{ $prodi }} | Kelas: {{ $kelas }}
+                            <td colspan="5" class="bg-slate-100 px-6 py-3 dark:bg-slate-700/60">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div class="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-100">
+                                        Kelas: {{ $kelas }} | Prodi: {{ $prodi !== '' ? $prodi : 'Tanpa Prodi' }}
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <button type="submit" name="bulk_action" value="pair_group" onclick="document.getElementById('group_kelas_id').value='{{ $key }}'" class="rounded-xl bg-slate-900 px-3 py-1.5 text-xs font-semibold text-amber-300">
+                                            Select All Kelas Ini
+                                        </button>
+                                        <button type="submit" name="bulk_action" value="clear_group" onclick="document.getElementById('group_kelas_id').value='{{ $key }}'" class="rounded-xl border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600">
+                                            Kosongkan Kelas Ini
+                                        </button>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                         @foreach ($members as $mhs)
                             <tr>
                                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ $mhs->nim }}</td>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{ $mhs->user?->name }}</td>
+                                <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ $mhs->semester ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm">
                                     <input
                                         type="text"
@@ -80,12 +95,13 @@
                         @endforeach
                     @empty
                         <tr>
-                            <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">Belum ada mahasiswa di kelas ini.</td>
+                            <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500">Belum ada mahasiswa di kelas ini.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        <input type="hidden" id="group_kelas_id" name="group_kelas_id" value="">
 
         <div class="flex items-center justify-between border-t border-gray-200 px-6 py-4 dark:border-gray-700">
             <a href="{{ route('dosen.ujian.index') }}" class="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-600 dark:text-gray-200">Kembali</a>

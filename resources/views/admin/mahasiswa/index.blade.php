@@ -27,7 +27,7 @@
         <div class="grid gap-3 md:grid-cols-5">
             <div class="md:col-span-2">
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Cari Mahasiswa</label>
-                <input type="text" name="q" value="{{ $q }}" placeholder="Nama, email, NIM, angkatan..." class="w-full rounded-2xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+                <input type="text" name="q" value="{{ $q }}" placeholder="Nama, email, NIM, angkatan, semester..." class="w-full rounded-2xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
             </div>
             <div>
                 <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">Status</label>
@@ -62,6 +62,7 @@
                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Email</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">NIM</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Prodi</th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Semester</th>
                     <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
                     <th class="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Aksi</th>
                 </tr>
@@ -73,6 +74,7 @@
                         <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ $item->user?->email }}</td>
                         <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ $item->nim }}</td>
                         <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ $item->prodi ?? '-' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ $item->semester ?? '-' }}</td>
                         <td class="px-6 py-4 text-sm">
                             <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $item->status === 'aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600' }}">
                                 {{ ucfirst($item->status) }}
@@ -90,7 +92,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500">Belum ada data.</td></tr>
+                    <tr><td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500">Belum ada data.</td></tr>
                 @endforelse
             </tbody>
         </table>
