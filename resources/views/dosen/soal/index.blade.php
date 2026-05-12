@@ -8,6 +8,17 @@
         $totalPoin = $items->sum('poin');
     @endphp
 
+    @if (session('success'))
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {{ session('success') }}
+        </div>
+    @endif
+    @if ($errors->any())
+        <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
     <div class="rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 shadow-sm">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -62,6 +73,27 @@
         <p class="mt-3 text-xs text-slate-500">Tip: seret kartu soal untuk ubah urutan nomor secara otomatis.</p>
     </form>
 
+    <form method="POST" action="{{ route('dosen.ujian.soal.poin.bulk', $ujian) }}" class="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        @csrf
+        <div class="grid gap-3 md:grid-cols-4">
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Poin Massal</label>
+                <input type="number" name="poin_massal" step="0.01" min="0" placeholder="Contoh: 1" class="w-full rounded-2xl border-slate-300 text-sm focus:border-amber-500 focus:ring-amber-500">
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Terapkan ke</label>
+                <select name="tipe" class="w-full rounded-2xl border-slate-300 text-sm focus:border-amber-500 focus:ring-amber-500">
+                    <option value="semua">Semua Soal</option>
+                    <option value="pg">Hanya Pilihan Ganda</option>
+                    <option value="essay">Hanya Essai</option>
+                </select>
+            </div>
+            <div class="md:col-span-2 flex items-end">
+                <button type="submit" class="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-amber-300">Set Poin Massal (Select All)</button>
+            </div>
+        </div>
+    </form>
+
     <div class="space-y-4">
         @forelse ($items as $item)
             <div class="soal-card rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
@@ -79,6 +111,12 @@
                         <div class="prose prose-sm max-w-none text-gray-900 dark:prose-invert">{!! $item->pertanyaan !!}</div>
                     </div>
                     <div class="flex items-center gap-2">
+                        <form method="POST" action="{{ route('dosen.ujian.soal.poin.update', [$ujian, $item]) }}" class="flex items-center gap-2">
+                            @csrf
+                            @method('PATCH')
+                            <input type="number" name="poin" step="0.01" min="0" value="{{ rtrim(rtrim(number_format((float) $item->poin, 2, '.', ''), '0'), '.') }}" class="w-24 rounded-xl border-slate-300 px-3 py-1.5 text-sm focus:border-amber-500 focus:ring-amber-500">
+                            <button class="rounded-xl border border-emerald-200 px-3 py-1.5 text-sm text-emerald-700">Simpan Poin</button>
+                        </form>
                         <a href="{{ route('dosen.ujian.soal.edit', [$ujian, $item]) }}" class="rounded-xl border border-blue-200 px-3 py-1.5 text-sm text-blue-600">Edit</a>
                         <form method="POST" action="{{ route('dosen.ujian.soal.destroy', [$ujian, $item]) }}" onsubmit="return confirm('Hapus soal ini?')">
                             @csrf @method('DELETE')

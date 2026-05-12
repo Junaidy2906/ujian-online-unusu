@@ -285,6 +285,44 @@ class SoalController extends Controller
         return redirect()->route('dosen.ujian.soal.index', $ujian)->with('success', 'Soal berhasil dihapus.');
     }
 
+    public function updatePoin(Request $request, Ujian $ujian, Soal $soal): RedirectResponse
+    {
+        $dosenId = Dosen::where('user_id', auth()->id())->value('id');
+        abort_unless($ujian->dosen_id === $dosenId && $soal->ujian_id === $ujian->id, 403);
+
+        $data = $request->validate([
+            'poin' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $soal->update([
+            'poin' => $data['poin'],
+        ]);
+
+        return redirect()->route('dosen.ujian.soal.index', $ujian)->with('success', 'Poin soal berhasil diperbarui.');
+    }
+
+    public function bulkUpdatePoin(Request $request, Ujian $ujian): RedirectResponse
+    {
+        $dosenId = Dosen::where('user_id', auth()->id())->value('id');
+        abort_unless($ujian->dosen_id === $dosenId, 403);
+
+        $data = $request->validate([
+            'poin_massal' => ['required', 'numeric', 'min:0'],
+            'tipe' => ['nullable', 'in:semua,pg,essay'],
+        ]);
+
+        $tipe = (string) ($data['tipe'] ?? 'semua');
+        $query = Soal::query()->where('ujian_id', $ujian->id);
+
+        if (in_array($tipe, ['pg', 'essay'], true)) {
+            $query->where('tipe', $tipe);
+        }
+
+        $updated = $query->update(['poin' => $data['poin_massal']]);
+
+        return redirect()->route('dosen.ujian.soal.index', $ujian)->with('success', "Poin massal berhasil diterapkan ke {$updated} soal.");
+    }
+
     private function validateSoal(Request $request): array
     {
         return $request->validate([
