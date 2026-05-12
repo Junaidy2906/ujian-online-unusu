@@ -263,13 +263,11 @@ class UjianController extends Controller
                 ->whereHas('soal', fn ($q) => $q->where('tipe', 'essay'))
                 ->sum('nilai');
 
-            $totalEssayPoin = (float) Soal::query()
+            $totalPoinSemuaSoal = (float) Soal::query()
                 ->where('ujian_id', $ujian->id)
-                ->where('tipe', 'essay')
                 ->sum('poin');
 
-            $essayScore100 = $totalEssayPoin > 0 ? ($essayRaw / $totalEssayPoin) * 100 : 0;
-            $nilaiEssayFinal = round($essayScore100 * ((float) $ujian->bobot_essay / 100), 2);
+            $nilaiEssayFinal = $totalPoinSemuaSoal > 0 ? round(($essayRaw / $totalPoinSemuaSoal) * 100, 2) : 0.0;
             $nilaiPgFinal = (float) ($percobaan->nilai_pg ?? $nilai->nilai_pg ?? 0);
             $nilaiAkhir = round($nilaiPgFinal + $nilaiEssayFinal, 2);
             $isLulus = $nilaiAkhir >= (float) $ujian->nilai_minimum_lulus;

@@ -126,6 +126,7 @@ class UjianController extends Controller
 
         $totalPgPoin = (float) $soalItems->where('tipe', 'pg')->sum('poin');
         $totalEssayPoin = (float) $soalItems->where('tipe', 'essay')->sum('poin');
+        $totalPoinSemuaSoal = (float) $soalItems->sum('poin');
         $nilaiPgRaw = 0.0;
         $nilaiEssayRaw = 0.0;
         $essayExists = false;
@@ -167,21 +168,13 @@ class UjianController extends Controller
             }
         });
 
-        $pgScore100 = $totalPgPoin > 0 ? ($nilaiPgRaw / $totalPgPoin) * 100 : 0;
-        $essayScore100 = $totalEssayPoin > 0 ? ($nilaiEssayRaw / $totalEssayPoin) * 100 : 0;
-
-        // Jika ujian hanya berisi PG, pakai skala penuh 0-100 agar 16/20 = 80, 20/20 = 100.
-        $isPgOnlyExam = $soalItems->where('tipe', 'essay')->count() === 0;
-
-        if ($isPgOnlyExam) {
-            $nilaiPgFinal = round($pgScore100, 2);
-            $nilaiEssayFinal = 0.0;
-            $nilaiAkhir = $nilaiPgFinal;
-        } else {
-            $nilaiPgFinal = round($pgScore100 * ((float) $ujian->bobot_pg / 100), 2);
-            $nilaiEssayFinal = $essayExists ? null : round($essayScore100 * ((float) $ujian->bobot_essay / 100), 2);
-            $nilaiAkhir = $essayExists ? $nilaiPgFinal : round($nilaiPgFinal + $nilaiEssayFinal, 2);
-        }
+        // Skor dihitung proporsional terhadap total poin seluruh soal (PG + Essai),
+        // sehingga jika total poin bank soal = 100, nilai akhir adalah akumulasi langsung.
+        $nilaiPgFinal = $totalPoinSemuaSoal > 0 ? round(($nilaiPgRaw / $totalPoinSemuaSoal) * 100, 2) : 0.0;
+        $nilaiEssayFinal = $essayExists
+            ? null
+            : ($totalPoinSemuaSoal > 0 ? round(($nilaiEssayRaw / $totalPoinSemuaSoal) * 100, 2) : 0.0);
+        $nilaiAkhir = $essayExists ? $nilaiPgFinal : round($nilaiPgFinal + $nilaiEssayFinal, 2);
         $isLulus = $nilaiAkhir >= (float) $ujian->nilai_minimum_lulus && ! $essayExists;
 
         $percobaan->update([
