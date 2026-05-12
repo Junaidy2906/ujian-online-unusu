@@ -44,6 +44,7 @@ class UjianController extends Controller
         $mahasiswaId = Mahasiswa::where('user_id', auth()->id())->value('id');
         $kelasIds = DB::table('kelas_mahasiswa')->where('mahasiswa_id', $mahasiswaId)->pluck('kelas_id');
         abort_unless($kelasIds->contains($ujian->kelas_id), 403);
+        $this->abortIfExamExpired($ujian);
         $this->abortIfNoExamAccess($ujian->id, $mahasiswaId);
 
         $attemptCount = PercobaanUjian::where('ujian_id', $ujian->id)->where('mahasiswa_id', $mahasiswaId)->count();
@@ -62,6 +63,7 @@ class UjianController extends Controller
         $mahasiswaId = Mahasiswa::where('user_id', auth()->id())->value('id');
         $kelasIds = DB::table('kelas_mahasiswa')->where('mahasiswa_id', $mahasiswaId)->pluck('kelas_id');
         abort_unless($kelasIds->contains($ujian->kelas_id), 403);
+        $this->abortIfExamExpired($ujian);
         $this->abortIfNoExamAccess($ujian->id, $mahasiswaId);
 
         $attemptCount = PercobaanUjian::where('ujian_id', $ujian->id)->where('mahasiswa_id', $mahasiswaId)->count();
@@ -256,5 +258,12 @@ class UjianController extends Controller
             ->value('tambahan_percobaan');
 
         return max(1, $defaultMax + max(0, $tambahan));
+    }
+
+    private function abortIfExamExpired(Ujian $ujian): void
+    {
+        if ($ujian->jadwal_selesai && now()->greaterThan($ujian->jadwal_selesai)) {
+            abort(403, 'Waktu ujian sudah habis.');
+        }
     }
 }
