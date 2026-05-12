@@ -159,7 +159,11 @@ class UjianController extends Controller
 
         return view('dosen.ujian.hasil', [
             'ujian' => $ujian->load('kelas', 'mataKuliah'),
-            'items' => NilaiUjian::with('mahasiswa.user')->where('ujian_id', $ujian->id)->latest()->get(),
+            'items' => NilaiUjian::with(['mahasiswa.user', 'percobaanUjian'])
+                ->where('ujian_id', $ujian->id)
+                ->orderBy('mahasiswa_id')
+                ->orderByDesc('created_at')
+                ->get(),
         ]);
     }
 

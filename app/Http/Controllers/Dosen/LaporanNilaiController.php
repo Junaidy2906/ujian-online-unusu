@@ -30,12 +30,22 @@ class LaporanNilaiController extends Controller
         $ujian->load(['kelas.mahasiswa.user', 'mataKuliah', 'dosen.user']);
 
         $studentIds = $ujian->kelas?->mahasiswa?->pluck('id') ?? collect();
-        $scores = NilaiUjian::with(['mahasiswa.user'])
+        $scoreItems = NilaiUjian::with(['mahasiswa.user', 'percobaanUjian'])
             ->where('ujian_id', $ujian->id)
             ->whereIn('mahasiswa_id', $studentIds)
             ->orderByDesc('nilai_akhir')
-            ->get()
-            ->keyBy('mahasiswa_id');
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Cetak rekap hanya ambil nilai tertinggi tiap mahasiswa.
+        $scores = $scoreItems
+            ->groupBy('mahasiswa_id')
+            ->map(function ($items) {
+                return $items
+                    ->sortByDesc(fn ($row) => (float) ($row->nilai_akhir ?? 0))
+                    ->sortByDesc(fn ($row) => $row->created_at?->timestamp ?? 0)
+                    ->first();
+            });
 
         $students = $ujian->kelas?->mahasiswa?->sortBy(fn ($student) => $student->user?->name ?? '') ?? collect();
 
