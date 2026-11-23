@@ -318,7 +318,7 @@ class UjianController extends Controller
         $allowedByKelas = Mahasiswa::with('kelas')
             ->whereIn('id', $allowedMahasiswaIds)
             ->get()
-            ->groupBy(fn (Mahasiswa $mhs) => (int) ($mhs->kelas->first()?->id ?? 0))
+            ->groupBy(fn () => (int) $ujian->kelas_id)
             ->map(fn ($items) => $items->pluck('id')->all());
 
         $inputKode = $data['kode'] ?? [];

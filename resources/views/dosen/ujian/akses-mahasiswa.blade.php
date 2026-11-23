@@ -43,11 +43,11 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     @php
-                        $grouped = $mahasiswaItems->groupBy(fn ($m) => (int) ($m->kelas->first()?->id ?? 0));
+                        $grouped = $mahasiswaItems->groupBy(fn ($m) => (int) $ujian->kelas_id);
                     @endphp
                     @forelse ($grouped as $key => $members)
                         @php
-                            $kelas = $members->first()?->kelas->first()?->nama_kelas ?: 'Tanpa Kelas';
+                            $kelas = $ujian->kelas?->nama_kelas ?: 'Tanpa Kelas';
                             $prodi = $members->pluck('prodi')->filter()->unique()->implode(', ');
                         @endphp
                         <tr>

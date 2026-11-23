@@ -15,13 +15,13 @@ class MahasiswaController extends Controller
 
         $kelasItems = Kelas::query()
             ->withCount('mahasiswa')
-            ->whereHas('mahasiswa')
+            ->orderByDesc('is_active')
             ->orderBy('nama_kelas')
             ->get();
 
         $selectedKelasId = $kelasId ?: (int) ($kelasItems->first()->id ?? 0);
         $selectedKelas = $selectedKelasId
-            ? Kelas::with(['mahasiswa.user'])->find($selectedKelasId)
+            ? Kelas::with(['mahasiswa' => fn ($query) => $query->orderBy('nim'), 'mahasiswa.user'])->find($selectedKelasId)
             : null;
 
         return view('dosen.mahasiswa.index', [

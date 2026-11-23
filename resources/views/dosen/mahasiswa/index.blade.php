@@ -4,13 +4,13 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Pilih kelas untuk melihat daftar mahasiswa yang akan dituju saat membuat ujian.</p>
 
         <form method="GET" action="{{ route('dosen.mahasiswa.index') }}" class="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
-            <select name="kelas_id" class="w-full rounded-2xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+            <select name="kelas_id" onchange="this.form.submit()" class="w-full rounded-2xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
                 @forelse ($kelasItems as $kelas)
                     <option value="{{ $kelas->id }}" @selected($selectedKelasId == $kelas->id)>
                         {{ $kelas->nama_kelas }} ({{ $kelas->mahasiswa_count }} mahasiswa)
                     </option>
                 @empty
-                    <option value="">Belum ada kelas berisi mahasiswa</option>
+                    <option value="">Belum ada data kelas</option>
                 @endforelse
             </select>
             <button type="submit" class="rounded-2xl bg-slate-950 px-5 py-2 text-sm font-semibold text-amber-300">Tampilkan</button>

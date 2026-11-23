@@ -40,6 +40,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('dosen', DosenController::class);
     Route::get('mahasiswa/template/download', [MahasiswaController::class, 'downloadTemplate'])->name('mahasiswa.template.download');
     Route::post('mahasiswa/template/upload', [MahasiswaController::class, 'uploadTemplate'])->name('mahasiswa.template.upload');
+    Route::post('mahasiswa/kelas/bulk', [MahasiswaController::class, 'bulkKelas'])->name('mahasiswa.kelas.bulk');
     Route::resource('mahasiswa', MahasiswaController::class);
     Route::resource('tahun-akademik', TahunAkademikController::class)->except(['show']);
     Route::resource('semester', SemesterController::class)->except(['show']);

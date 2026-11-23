@@ -49,6 +49,16 @@
                         <div class="mt-2 text-sm font-semibold text-slate-900">{{ $item->telepon ?? '-' }}</div>
                     </div>
                     <div class="rounded-2xl bg-slate-50 p-4 sm:col-span-2">
+                        <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Kelas</div>
+                        <div class="mt-2 flex flex-wrap gap-1.5">
+                            @forelse ($item->kelas as $kelas)
+                                <span class="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">{{ $kelas->nama_kelas }} ({{ $kelas->kode_kelas }})</span>
+                            @empty
+                                <span class="text-sm text-slate-500">Belum terdaftar di kelas mana pun.</span>
+                            @endforelse
+                        </div>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 p-4 sm:col-span-2">
                         <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Alamat</div>
                         <div class="mt-2 text-sm leading-6 text-slate-700">{{ $item->alamat ?? '-' }}</div>
                     </div>

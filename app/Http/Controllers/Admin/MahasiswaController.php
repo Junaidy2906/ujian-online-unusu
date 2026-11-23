@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Kelas;
 use App\Models\Mahasiswa;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -29,8 +30,9 @@ class MahasiswaController extends Controller
         $search = trim((string) $request->query('q', ''));
         $status = (string) $request->query('status', 'semua');
         $prodi = trim((string) $request->query('prodi', ''));
+        $kelasFilter = (string) $request->query('kelas', '');
 
-        $query = Mahasiswa::with('user');
+        $query = Mahasiswa::with(['user', 'kelas']);
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search): void {
@@ -54,6 +56,12 @@ class MahasiswaController extends Controller
             $query->where('prodi', $prodi);
         }
 
+        if ($kelasFilter === 'tanpa') {
+            $query->whereDoesntHave('kelas');
+        } elseif (ctype_digit($kelasFilter)) {
+            $query->whereHas('kelas', fn ($kelasQuery) => $kelasQuery->where('kelas.id', (int) $kelasFilter));
+        }
+
         return view('admin.mahasiswa.index', [
             'items' => $query->latest()->get(),
             'prodiItems' => Mahasiswa::query()
@@ -63,10 +71,12 @@ class MahasiswaController extends Controller
                 ->distinct()
                 ->orderBy('prodi')
                 ->pluck('prodi'),
+            'kelasItems' => $this->kelasOptions(),
             'filters' => [
                 'q' => $search,
                 'status' => in_array($status, ['semua', 'aktif', 'cuti', 'nonaktif'], true) ? $status : 'semua',
                 'prodi' => $prodi,
+                'kelas' => $kelasFilter === 'tanpa' || ctype_digit($kelasFilter) ? $kelasFilter : '',
             ],
         ]);
     }
@@ -85,7 +95,9 @@ class MahasiswaController extends Controller
 
     public function create(): View
     {
-        return view('admin.mahasiswa.create');
+        return view('admin.mahasiswa.create', [
+            'kelasItems' => $this->kelasOptions(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -101,6 +113,8 @@ class MahasiswaController extends Controller
             'telepon' => ['nullable', 'string', 'max:20'],
             'alamat' => ['nullable', 'string'],
             'status' => ['required', 'in:aktif,cuti,nonaktif'],
+            'kelas_ids' => ['nullable', 'array'],
+            'kelas_ids.*' => ['integer', 'exists:kelas,id'],
         ]);
 
         DB::transaction(function () use ($data): void {
@@ -108,11 +122,11 @@ class MahasiswaController extends Controller
             $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
-                'password' => Hash::make($data['password'] ?: $defaultPassword),
+                'password' => Hash::make(($data['password'] ?? null) ?: $defaultPassword),
                 'role' => User::ROLE_MAHASISWA,
             ]);
 
-            Mahasiswa::create([
+            $mahasiswa = Mahasiswa::create([
                 'user_id' => $user->id,
                 'nim' => $data['nim'],
                 'prodi' => $data['prodi'] ?? null,
@@ -122,6 +136,8 @@ class MahasiswaController extends Controller
                 'alamat' => $data['alamat'] ?? null,
                 'status' => $data['status'],
             ]);
+
+            $mahasiswa->kelas()->sync($data['kelas_ids'] ?? []);
         });
 
         return redirect()->route('admin.mahasiswa.index')->with('success', 'Data mahasiswa berhasil ditambahkan.');
@@ -129,10 +145,12 @@ class MahasiswaController extends Controller
 
     public function edit(Mahasiswa $mahasiswa): View
     {
-        $mahasiswa->load('user');
+        $mahasiswa->load(['user', 'kelas']);
 
         return view('admin.mahasiswa.edit', [
             'item' => $mahasiswa,
+            'kelasItems' => $this->kelasOptions(),
+            'selectedKelasIds' => $mahasiswa->kelas->pluck('id')->all(),
         ]);
     }
 
@@ -151,6 +169,8 @@ class MahasiswaController extends Controller
             'telepon' => ['nullable', 'string', 'max:20'],
             'alamat' => ['nullable', 'string'],
             'status' => ['required', 'in:aktif,cuti,nonaktif'],
+            'kelas_ids' => ['nullable', 'array'],
+            'kelas_ids.*' => ['integer', 'exists:kelas,id'],
         ]);
 
         DB::transaction(function () use ($data, $mahasiswa): void {
@@ -170,9 +190,53 @@ class MahasiswaController extends Controller
                 'alamat' => $data['alamat'] ?? null,
                 'status' => $data['status'],
             ]);
+
+            $mahasiswa->kelas()->sync($data['kelas_ids'] ?? []);
         });
 
         return redirect()->route('admin.mahasiswa.index')->with('success', 'Data mahasiswa berhasil diperbarui.');
+    }
+
+    public function bulkKelas(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'mahasiswa_ids' => ['required', 'array', 'min:1'],
+            'mahasiswa_ids.*' => ['integer', 'exists:mahasiswa,id'],
+            'kelas_id' => ['required', 'integer', 'exists:kelas,id'],
+            'aksi' => ['required', 'in:tambah,pindah,keluarkan'],
+        ], [
+            'mahasiswa_ids.required' => 'Pilih minimal satu mahasiswa terlebih dahulu.',
+            'kelas_id.required' => 'Pilih kelas tujuan terlebih dahulu.',
+        ]);
+
+        $kelas = Kelas::findOrFail($data['kelas_id']);
+        $ids = array_map('intval', $data['mahasiswa_ids']);
+
+        DB::transaction(function () use ($data, $kelas, $ids): void {
+            if ($data['aksi'] === 'keluarkan') {
+                $kelas->mahasiswa()->detach($ids);
+
+                return;
+            }
+
+            if ($data['aksi'] === 'pindah') {
+                // Remove from every other class first, then place in the chosen one.
+                DB::table('kelas_mahasiswa')
+                    ->whereIn('mahasiswa_id', $ids)
+                    ->where('kelas_id', '!=', $kelas->id)
+                    ->delete();
+            }
+
+            $kelas->mahasiswa()->syncWithoutDetaching($ids);
+        });
+
+        $label = match ($data['aksi']) {
+            'tambah' => 'dimasukkan ke',
+            'pindah' => 'dipindahkan ke',
+            'keluarkan' => 'dikeluarkan dari',
+        };
+
+        return back()->with('success', count($ids)." mahasiswa berhasil {$label} kelas {$kelas->nama_kelas}.");
     }
 
     public function destroy(Mahasiswa $mahasiswa): RedirectResponse
@@ -186,8 +250,8 @@ class MahasiswaController extends Controller
 
     public function downloadTemplate(): BinaryFileResponse
     {
-        $headers = ['name', 'email', 'password', 'nim', 'prodi', 'semester', 'angkatan', 'telepon', 'alamat', 'status'];
-        $sample = ['Nama Mahasiswa', 'mahasiswa@contoh.ac.id', 'password123', '23100001', 'Teknik Informatika', '2', '2023', '08123456789', 'Alamat mahasiswa', 'aktif'];
+        $headers = ['name', 'email', 'password', 'nim', 'prodi', 'semester', 'angkatan', 'telepon', 'alamat', 'status', 'kode_kelas'];
+        $sample = ['Nama Mahasiswa', 'mahasiswa@contoh.ac.id', 'password123', '23100001', 'Teknik Informatika', '2', '2023', '08123456789', 'Alamat mahasiswa', 'aktif', Kelas::query()->value('kode_kelas') ?? 'KODE-KELAS'];
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -292,6 +356,8 @@ class MahasiswaController extends Controller
         $created = 0;
         $updated = 0;
         $adjustedEmails = 0;
+        $kelasByKode = Kelas::query()->pluck('id', 'kode_kelas')
+            ->mapWithKeys(fn ($id, $kode) => [strtolower(trim((string) $kode)) => $id]);
 
         foreach ($students as $row) {
             $student = Mahasiswa::query()->where('nim', $row['nim'])->lockForUpdate()->first();
@@ -326,8 +392,19 @@ class MahasiswaController extends Controller
                 $student->update($profile);
                 $updated++;
             } else {
-                Mahasiswa::create(['user_id' => $user->id, 'nim' => $row['nim'], ...$profile]);
+                $student = Mahasiswa::create(['user_id' => $user->id, 'nim' => $row['nim'], ...$profile]);
                 $created++;
+            }
+
+            // Optional "kode_kelas" column: one or more class codes separated by comma/semicolon.
+            $kelasIds = collect(preg_split('/[,;]+/', (string) ($row['kode_kelas'] ?? '')))
+                ->map(fn ($kode) => $kelasByKode->get(strtolower(trim($kode))))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            if ($kelasIds !== []) {
+                $student->kelas()->syncWithoutDetaching($kelasIds);
             }
 
             if ($email !== $row['email']) {
@@ -336,6 +413,16 @@ class MahasiswaController extends Controller
         }
 
         return [$created, $updated, $adjustedEmails];
+    }
+
+    private function kelasOptions()
+    {
+        return Kelas::query()
+            ->with(['semester', 'tahunAkademik'])
+            ->withCount('mahasiswa')
+            ->orderByDesc('is_active')
+            ->orderBy('nama_kelas')
+            ->get();
     }
 
     private function readSpreadsheetRows(string $path): array

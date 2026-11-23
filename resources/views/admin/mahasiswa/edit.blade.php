@@ -16,5 +16,7 @@
             ['label' => 'Alamat', 'name' => 'alamat', 'type' => 'textarea', 'full' => true],
             ['label' => 'Status', 'name' => 'status', 'type' => 'select', 'options' => ['aktif' => 'Aktif', 'cuti' => 'Cuti', 'nonaktif' => 'Nonaktif']],
         ]"
-    />
+    >
+        @include('admin.mahasiswa.partials.kelas-picker')
+    </x-admin.partials.form>
 </x-admin-layout>
