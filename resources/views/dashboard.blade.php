@@ -18,6 +18,7 @@
     $sidebarItems = match ($role) {
         \App\Models\User::ROLE_ADMIN => [
             ['label' => 'Dashboard', 'route' => 'dashboard'],
+            ['label' => 'LMS', 'route' => 'admin.lms.index'],
             ['label' => 'Data Dosen', 'route' => 'admin.dosen.index'],
             ['label' => 'Data Mahasiswa', 'route' => 'admin.mahasiswa.index'],
             ['label' => 'Data Kelas', 'route' => 'admin.kelas.index'],
@@ -27,6 +28,7 @@
         ],
         \App\Models\User::ROLE_DOSEN => [
             ['label' => 'Dashboard', 'route' => 'dashboard'],
+            ['label' => 'LMS', 'route' => 'dosen.lms.index'],
             ['label' => 'Ujian Saya', 'route' => 'dosen.ujian.index'],
             ['label' => 'Buat Ujian', 'route' => 'dosen.ujian.create'],
             ['label' => 'Hasil Ujian', 'route' => 'dosen.ujian.index'],
@@ -35,6 +37,7 @@
         ],
         default => [
             ['label' => 'Dashboard', 'route' => 'dashboard'],
+            ['label' => 'LMS', 'route' => 'mahasiswa.lms.index'],
             ['label' => 'Daftar Ujian', 'route' => 'mahasiswa.ujian.index'],
             ['label' => 'Riwayat Ujian', 'route' => 'mahasiswa.ujian.index'],
             ['label' => 'Nilai Saya', 'route' => 'mahasiswa.ujian.index'],

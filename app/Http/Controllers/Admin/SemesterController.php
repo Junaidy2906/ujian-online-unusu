@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\LmsMeeting;
+use App\Models\MataKuliah;
 use App\Models\Semester;
 use App\Models\TahunAkademik;
 use Illuminate\Http\RedirectResponse;
@@ -36,7 +38,7 @@ class SemesterController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        Semester::create([
+        $semester = Semester::create([
             'tahun_akademik_id' => $data['tahun_akademik_id'],
             'nama' => $data['nama'],
             'urutan' => $data['urutan'],
@@ -44,6 +46,16 @@ class SemesterController extends Controller
             'tanggal_selesai' => $data['tanggal_selesai'] ?? null,
             'is_active' => $request->boolean('is_active'),
         ]);
+
+        foreach (MataKuliah::query()->pluck('id') as $mataKuliahId) {
+            for ($meeting = 1; $meeting <= 16; $meeting++) {
+                LmsMeeting::query()->firstOrCreate([
+                    'mata_kuliah_id' => $mataKuliahId,
+                    'semester_id' => $semester->id,
+                    'meeting_number' => $meeting,
+                ]);
+            }
+        }
 
         return redirect()->route('admin.semester.index')->with('success', 'Semester berhasil ditambahkan.');
     }

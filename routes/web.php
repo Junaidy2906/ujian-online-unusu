@@ -10,10 +10,13 @@ use App\Http\Controllers\Admin\MataKuliahController;
 use App\Http\Controllers\Admin\LaporanNilaiController as AdminLaporanNilaiController;
 use App\Http\Controllers\Admin\SemesterController;
 use App\Http\Controllers\Admin\TahunAkademikController;
+use App\Http\Controllers\Admin\LmsController as AdminLmsController;
 use App\Http\Controllers\Dosen\SoalController;
 use App\Http\Controllers\Dosen\MahasiswaController as DosenMahasiswaController;
 use App\Http\Controllers\Dosen\LaporanNilaiController as DosenLaporanNilaiController;
 use App\Http\Controllers\Dosen\UjianController as DosenUjianController;
+use App\Http\Controllers\Dosen\LmsMaterialController;
+use App\Http\Controllers\Mahasiswa\LmsController as MahasiswaLmsController;
 use App\Http\Controllers\Mahasiswa\UjianController as MahasiswaUjianController;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +50,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('laporan-nilai', [AdminLaporanNilaiController::class, 'index'])->name('laporan-nilai.index');
     Route::get('laporan-nilai/{ujian}', [AdminLaporanNilaiController::class, 'show'])->name('laporan-nilai.show');
     Route::get('laporan-nilai/{ujian}/mahasiswa/{mahasiswa}', [AdminLaporanNilaiController::class, 'cetakMahasiswa'])->name('laporan-nilai.mahasiswa');
+    Route::get('lms', [AdminLmsController::class, 'index'])->name('lms.index');
+    Route::post('lms/setting', [AdminLmsController::class, 'saveSetting'])->name('lms.setting.save');
+    Route::post('lms/generate-meetings', [AdminLmsController::class, 'generateMeetings'])->name('lms.meetings.generate');
 });
 
 Route::middleware(['auth', 'role:dosen'])->prefix('dosen')->name('dosen.')->group(function () {
@@ -66,6 +72,7 @@ Route::middleware(['auth', 'role:dosen'])->prefix('dosen')->name('dosen.')->grou
     Route::get('laporan-nilai', [DosenLaporanNilaiController::class, 'index'])->name('laporan-nilai.index');
     Route::get('laporan-nilai/{ujian}', [DosenLaporanNilaiController::class, 'show'])->name('laporan-nilai.show');
     Route::get('laporan-nilai/{ujian}/mahasiswa/{mahasiswa}', [DosenLaporanNilaiController::class, 'cetakMahasiswa'])->name('laporan-nilai.mahasiswa');
+    Route::resource('lms', LmsMaterialController::class)->except(['show'])->parameters(['lms' => 'lms']);
 });
 
 Route::middleware(['auth', 'role:mahasiswa'])->prefix('mahasiswa')->name('mahasiswa.')->group(function () {
@@ -76,6 +83,8 @@ Route::middleware(['auth', 'role:mahasiswa'])->prefix('mahasiswa')->name('mahasi
     Route::post('percobaan/{percobaan}/submit', [MahasiswaUjianController::class, 'submit'])->name('ujian.submit');
     Route::get('percobaan/{percobaan}/hasil', [MahasiswaUjianController::class, 'hasil'])->name('ujian.hasil');
     Route::get('percobaan/{percobaan}/cetak', [MahasiswaUjianController::class, 'cetak'])->name('ujian.cetak');
+    Route::get('lms', [MahasiswaLmsController::class, 'index'])->name('lms.index');
+    Route::post('lms/{material}/unlock', [MahasiswaLmsController::class, 'unlock'])->name('lms.unlock');
 });
 
 require __DIR__.'/auth.php';

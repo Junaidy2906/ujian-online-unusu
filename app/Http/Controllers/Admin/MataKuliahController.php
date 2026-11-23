@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Dosen;
+use App\Models\LmsMeeting;
 use App\Models\MataKuliah;
+use App\Models\Semester;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -36,7 +38,7 @@ class MataKuliahController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        MataKuliah::create([
+        $mataKuliah = MataKuliah::create([
             'dosen_id' => $data['dosen_id'] ?? null,
             'kode_mk' => $data['kode_mk'],
             'nama_mk' => $data['nama_mk'],
@@ -44,6 +46,16 @@ class MataKuliahController extends Controller
             'prodi' => $data['prodi'] ?? null,
             'is_active' => $request->boolean('is_active'),
         ]);
+
+        foreach (Semester::query()->pluck('id') as $semesterId) {
+            for ($meeting = 1; $meeting <= 16; $meeting++) {
+                LmsMeeting::query()->firstOrCreate([
+                    'mata_kuliah_id' => $mataKuliah->id,
+                    'semester_id' => $semesterId,
+                    'meeting_number' => $meeting,
+                ]);
+            }
+        }
 
         return redirect()->route('admin.mata-kuliah.index')->with('success', 'Mata kuliah berhasil ditambahkan.');
     }
