@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Mahasiswa;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use PhpOffice\PhpSpreadsheet\Exception as SpreadsheetException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -195,114 +200,168 @@ class MahasiswaController extends Controller
         return response()->download($tempFile, 'template_mahasiswa.xlsx')->deleteFileAfterSend(true);
     }
 
-    public function uploadTemplate(Request $request): RedirectResponse
+    public function uploadTemplate(Request $request): JsonResponse|RedirectResponse
     {
         $data = $request->validate([
             'template_file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls'],
         ]);
 
-        $rows = $this->readSpreadsheetRows($data['template_file']->getRealPath());
-        if (count($rows) === 0) {
-            return back()->withErrors(['template_file' => 'File template kosong.']);
+        try {
+            $rows = $this->readSpreadsheetRows($data['template_file']->getRealPath());
+        } catch (SpreadsheetException) {
+            throw ValidationException::withMessages([
+                'template_file' => 'File tidak dapat dibaca. Periksa formatnya lalu coba lagi.',
+            ]);
         }
 
-        $header = array_shift($rows);
-        $header = array_map(fn ($value) => strtolower(trim((string) $value)), $header);
+        $header = array_map(
+            fn ($value) => strtolower(trim((string) $value, "\xEF\xBB\xBF \t\n\r\0\x0B")),
+            array_shift($rows) ?? [],
+        );
+        if (count(array_intersect(['name', 'email', 'nim'], $header)) !== 3) {
+            throw ValidationException::withMessages([
+                'template_file' => 'Gunakan template dengan kolom name, email, dan nim pada baris pertama.',
+            ]);
+        }
+
+        $students = [];
+        $skipped = 0;
+
+        foreach ($rows as $row) {
+            $values = array_map(fn ($value) => trim((string) $value), $row);
+            if (count(array_filter($values, fn ($value) => $value !== '')) === 0) {
+                continue;
+            }
+
+            $student = array_combine($header, $values);
+            $validator = Validator::make($student, [
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'string', 'max:255'],
+                'nim' => ['required', 'string', 'max:30'],
+                'prodi' => ['nullable', 'string', 'max:100'],
+                'angkatan' => ['nullable', 'string', 'max:10'],
+                'telepon' => ['nullable', 'string', 'max:20'],
+            ]);
+
+            if ($validator->fails() || strlen($student['alamat'] ?? '') > 65535
+                || str_contains($student['password'] ?? '', "\0")) {
+                $skipped++;
+
+                continue;
+            }
+
+            // The last valid row for a NIM is the one saved.
+            $students[$student['nim']] = $student;
+        }
+
+        if ($students === []) {
+            throw ValidationException::withMessages([
+                'template_file' => 'Tidak ada baris mahasiswa yang valid. Periksa nama, email, dan NIM.',
+            ]);
+        }
+
+        try {
+            [$created, $updated, $adjustedEmails] = retry(
+                3,
+                fn () => DB::transaction(fn () => $this->importStudents($students), 3),
+                0,
+                fn ($exception) => $exception instanceof UniqueConstraintViolationException,
+            );
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages([
+                'template_file' => 'Ada konflik NIM atau email saat menyimpan data. Coba unggah kembali.',
+            ]);
+        }
+
+        $message = "Impor selesai. {$created} ditambahkan, {$updated} diperbarui, {$skipped} baris tidak valid dilewati.";
+        if ($adjustedEmails > 0) {
+            $message .= " {$adjustedEmails} mahasiswa memakai email lokal karena email pada file tidak valid atau sudah dipakai.";
+        }
+
+        if ($request->expectsJson()) {
+            $request->session()->flash('success', $message);
+
+            return response()->json(['redirect' => route('admin.mahasiswa.index', absolute: false)]);
+        }
+
+        return redirect()->route('admin.mahasiswa.index')->with('success', $message);
+    }
+
+    private function importStudents(array $students): array
+    {
         $created = 0;
+        $updated = 0;
+        $adjustedEmails = 0;
 
-        DB::transaction(function () use ($rows, $header, &$created): void {
-            foreach ($rows as $row) {
-                if (count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) {
-                    continue;
+        foreach ($students as $row) {
+            $student = Mahasiswa::query()->where('nim', $row['nim'])->lockForUpdate()->first();
+            $user = $student ? $student->user()->lockForUpdate()->firstOrFail() : new User;
+            $email = $this->resolveUniqueEmail($row['email'], $row['nim'], $user->id);
+
+            $user->fill(['name' => $row['name'], 'email' => $email]);
+            $password = $row['password'] ?? '';
+            if ($password !== '' || ! $user->exists) {
+                $user->password = Hash::make($password !== '' ? $password : $row['nim']);
+            }
+            if (! $user->exists) {
+                $user->role = User::ROLE_MAHASISWA;
+            }
+            $user->save();
+
+            $profile = [];
+            foreach (['prodi', 'angkatan', 'telepon', 'alamat'] as $column) {
+                if (array_key_exists($column, $row)) {
+                    $profile[$column] = $row[$column] === '' ? null : $row[$column];
                 }
+            }
+            if (array_key_exists('semester', $row)) {
+                $profile['semester'] = $row['semester'] === '' ? null : max(1, min(14, (int) $row['semester']));
+            }
+            if (array_key_exists('status', $row)) {
+                $status = strtolower($row['status']);
+                $profile['status'] = in_array($status, ['aktif', 'cuti', 'nonaktif'], true) ? $status : 'aktif';
+            }
 
-                $rowData = [];
-                foreach ($header as $index => $column) {
-                    $rowData[$column] = trim((string) ($row[$index] ?? ''));
-                }
-
-                if (($rowData['name'] ?? '') === '' || ($rowData['email'] ?? '') === '' || ($rowData['nim'] ?? '') === '') {
-                    continue;
-                }
-
-                $password = ($rowData['password'] ?? '') !== '' ? $rowData['password'] : $rowData['nim'];
-
-                $mahasiswaExisting = Mahasiswa::with('user')->where('nim', $rowData['nim'])->first();
-
-                if ($mahasiswaExisting) {
-                    $user = $mahasiswaExisting->user;
-                    $targetEmail = $this->resolveUniqueEmail(
-                        $rowData['email'],
-                        $rowData['nim'],
-                        $user?->id
-                    );
-
-                    $user?->update([
-                        'name' => $rowData['name'],
-                        'email' => $targetEmail,
-                        'password' => Hash::make($password),
-                        'role' => User::ROLE_MAHASISWA,
-                    ]);
-                } else {
-                    $targetEmail = $this->resolveUniqueEmail(
-                        $rowData['email'],
-                        $rowData['nim']
-                    );
-
-                    $user = User::create([
-                        'name' => $rowData['name'],
-                        'email' => $targetEmail,
-                        'password' => Hash::make($password),
-                        'role' => User::ROLE_MAHASISWA,
-                    ]);
-                }
-
-                Mahasiswa::updateOrCreate(
-                    ['user_id' => $user->id],
-                    [
-                        'nim' => $rowData['nim'],
-                        'prodi' => $rowData['prodi'] !== '' ? $rowData['prodi'] : null,
-                        'semester' => ($rowData['semester'] ?? '') !== '' ? max(1, min(14, (int) $rowData['semester'])) : null,
-                        'angkatan' => $rowData['angkatan'] !== '' ? $rowData['angkatan'] : null,
-                        'telepon' => $rowData['telepon'] !== '' ? $rowData['telepon'] : null,
-                        'alamat' => $rowData['alamat'] !== '' ? $rowData['alamat'] : null,
-                        'status' => in_array(strtolower((string) ($rowData['status'] ?? 'aktif')), ['aktif', 'cuti', 'nonaktif'], true)
-                            ? strtolower((string) $rowData['status'])
-                            : 'aktif',
-                    ]
-                );
-
+            if ($student) {
+                $student->update($profile);
+                $updated++;
+            } else {
+                Mahasiswa::create(['user_id' => $user->id, 'nim' => $row['nim'], ...$profile]);
                 $created++;
             }
-        });
 
-        return back()->with('success', "Upload data mahasiswa selesai. Baris diproses: {$created}.");
+            if ($email !== $row['email']) {
+                $adjustedEmails++;
+            }
+        }
+
+        return [$created, $updated, $adjustedEmails];
     }
 
     private function readSpreadsheetRows(string $path): array
     {
         $spreadsheet = IOFactory::load($path);
-        $sheet = $spreadsheet->getActiveSheet();
 
-        return $sheet->toArray(null, true, true, false);
+        try {
+            return $spreadsheet->getActiveSheet()->toArray(null, true, true, false);
+        } finally {
+            $spreadsheet->disconnectWorksheets();
+        }
     }
 
-    private function resolveUniqueEmail(string $rawEmail, string $nim, ?int $ignoreUserId = null): string
+    private function resolveUniqueEmail(string $email, string $nim, ?int $ignoreUserId): string
     {
-        $candidate = trim($rawEmail);
-        if ($candidate === '' || ! filter_var($candidate, FILTER_VALIDATE_EMAIL)) {
-            $candidate = $nim.'@'.self::FALLBACK_EMAIL_DOMAIN;
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) && ! $this->emailExists($email, $ignoreUserId)) {
+            return $email;
         }
 
-        $base = $candidate;
+        // Keep an email already assigned to another account with its owner.
+        $candidate = $nim.'@'.self::FALLBACK_EMAIL_DOMAIN;
         $attempt = 0;
 
         while ($this->emailExists($candidate, $ignoreUserId)) {
             $attempt++;
-            $parts = explode('@', $base, 2);
-            $local = $parts[0] ?? $nim;
-            $domain = $parts[1] ?? self::FALLBACK_EMAIL_DOMAIN;
-            $candidate = $local.'+'.$attempt.'@'.$domain;
+            $candidate = $nim.'+'.$attempt.'@'.self::FALLBACK_EMAIL_DOMAIN;
         }
 
         return $candidate;

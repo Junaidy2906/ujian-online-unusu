@@ -15,13 +15,23 @@
             <a href="{{ route('admin.mahasiswa.create') }}" class="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-amber-300">Tambah Data</a>
         </div>
     </div>
-    <form method="POST" action="{{ route('admin.mahasiswa.template.upload') }}" enctype="multipart/form-data" class="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+    <form method="POST" action="{{ route('admin.mahasiswa.template.upload', absolute: false) }}" enctype="multipart/form-data"
+        x-data="studentUpload" @submit.prevent="upload($el)"
+        class="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         @csrf
         <div class="flex flex-wrap items-center gap-3">
-            <input type="file" name="template_file" accept=".xlsx,.xls,.csv,.txt" class="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
-            <button type="submit" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white">Upload Data Mahasiswa</button>
+            <label for="student-template" class="sr-only">File data mahasiswa</label>
+            <input id="student-template" type="file" name="template_file" accept=".xlsx,.xls,.csv,.txt" required :disabled="busy" @change="error = ''" class="max-w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+            <button type="submit" :disabled="busy" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60">Upload Data Mahasiswa</button>
         </div>
-        @error('template_file')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Data dengan NIM yang sama akan diperbarui dari file ini.</p>
+        <div x-show="busy" style="display: none" class="mt-4 space-y-1">
+            <p id="student-upload-status" role="status" class="text-sm font-medium text-slate-700 dark:text-slate-200" x-text="status"></p>
+            <progress x-show="progress !== null" max="100" :value="progress ?? 0" aria-labelledby="student-upload-status" class="block h-2 w-full accent-emerald-600"></progress>
+            <progress x-show="progress === null" aria-labelledby="student-upload-status" class="block h-2 w-full accent-emerald-600"></progress>
+        </div>
+        <p x-show="error" style="display: none" role="alert" x-text="error" class="mt-2 text-sm text-red-600"></p>
+        @error('template_file')<p x-show="!attempted" role="alert" class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
     </form>
     <form method="GET" action="{{ route('admin.mahasiswa.index') }}" class="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div class="grid gap-3 md:grid-cols-5">

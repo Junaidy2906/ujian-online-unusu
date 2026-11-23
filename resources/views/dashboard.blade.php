@@ -153,7 +153,7 @@
         </aside>
 
         <main class="flex-1">
-            <div class="border-b border-slate-200 bg-white/80 backdrop-blur-xl">
+            <div class="relative z-30 border-b border-slate-200 bg-white/80 backdrop-blur-xl">
                 <div class="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
                     <div class="flex items-center gap-3">
                         <button type="button" class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-xl text-white xl:hidden" @click="mobileSidebarOpen = true">☰</button>
